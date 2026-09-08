@@ -298,7 +298,10 @@ bool OBSApp::InitGlobalConfigDefaults()
 	config_set_default_uint(appConfig, "General", "MaxLogs", 10);
 	config_set_default_int(appConfig, "General", "InfoIncrement", -1);
 	config_set_default_string(appConfig, "General", "ProcessPriority", "Normal");
-	config_set_default_bool(appConfig, "General", "EnableAutoUpdates", true);
+	/* CornOBS: no update server to check against, and "updating" would try to
+	 * replace this fork with stock OBS. Off by default; IsUpdaterDisabled()
+	 * also hard-disables the machinery. */
+	config_set_default_bool(appConfig, "General", "EnableAutoUpdates", false);
 
 #if _WIN32
 	config_set_default_string(appConfig, "Video", "Renderer", "Direct3D 11");
@@ -1336,7 +1339,11 @@ bool OBSApp::IsPortableMode()
 
 bool OBSApp::IsUpdaterDisabled()
 {
-	return opt_disable_updater;
+	/* CornOBS: always disabled. This is a self-built fork; the OBS update
+	 * server would only offer to overwrite it with stock OBS, and every
+	 * update/"repair" path here is meaningless. Also hides the updater
+	 * section of Settings and skips the What's New fetch on first load. */
+	return true;
 }
 
 bool OBSApp::IsMissingFilesCheckDisabled()

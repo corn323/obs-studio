@@ -1386,7 +1386,7 @@ void OBSBasic::OnFirstLoad()
 
 #ifdef WHATSNEW_ENABLED
 	/* Attempt to load init screen if available */
-	if (cef) {
+	if (cef && !App()->IsUpdaterDisabled()) {
 		WhatsNewInfoThread *wnit = new WhatsNewInfoThread();
 		connect(wnit, &WhatsNewInfoThread::Result, this, &OBSBasic::ReceivedIntroJson, Qt::QueuedConnection);
 
