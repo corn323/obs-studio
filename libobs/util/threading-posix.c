@@ -30,6 +30,12 @@
 #include <pthread_np.h>
 #endif
 
+#ifdef __APPLE__
+#include <pthread/qos.h>
+#else
+#include <sys/resource.h>
+#endif
+
 #include "bmem.h"
 #include "threading.h"
 
@@ -269,5 +275,49 @@ void os_set_thread_name(const char *name)
 		pthread_setname_np(pthread_self(), thread_name);
 		bfree(thread_name);
 	}
+#endif
+}
+
+int os_set_thread_priority(enum os_thread_priority priority)
+{
+#if defined(__APPLE__)
+	qos_class_t qos;
+
+	switch (priority) {
+	case OS_THREAD_PRIORITY_HIGH:
+	case OS_THREAD_PRIORITY_ABOVE_NORMAL:
+		qos = QOS_CLASS_USER_INTERACTIVE;
+		break;
+	default:
+		qos = QOS_CLASS_DEFAULT;
+		break;
+	}
+
+	return pthread_set_qos_class_self_np(qos, 0) == 0 ? 0 : -1;
+#elif defined(__linux__)
+	/* Linux applies nice values per-task, so this lowers the calling
+	 * thread's nice level only. Going below zero needs RLIMIT_NICE or
+	 * CAP_SYS_NICE; treat a failure as non-fatal. */
+	int nice_value;
+
+	switch (priority) {
+	case OS_THREAD_PRIORITY_HIGH:
+		nice_value = -10;
+		break;
+	case OS_THREAD_PRIORITY_ABOVE_NORMAL:
+		nice_value = -5;
+		break;
+	default:
+		nice_value = 0;
+		break;
+	}
+
+	errno = 0;
+	if (setpriority(PRIO_PROCESS, 0, nice_value) == -1 && errno != 0)
+		return -1;
+	return 0;
+#else
+	UNUSED_PARAMETER(priority);
+	return -1;
 #endif
 }

@@ -216,6 +216,7 @@ static void *audio_thread(void *param)
 	uint64_t prev_time = start_time;
 
 	os_set_thread_name("audio-io: audio thread");
+	os_set_thread_priority(OS_THREAD_PRIORITY_HIGH);
 
 	const char *audio_thread_name =
 		profile_store_name(obs_get_profiler_name_store(), "audio_thread(%s)", audio->info.name);

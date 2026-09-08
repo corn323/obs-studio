@@ -211,3 +211,22 @@ void os_set_thread_name(const char *name)
 		FreeLibrary(hModule);
 	}
 }
+
+int os_set_thread_priority(enum os_thread_priority priority)
+{
+	int native;
+
+	switch (priority) {
+	case OS_THREAD_PRIORITY_HIGH:
+		native = THREAD_PRIORITY_HIGHEST;
+		break;
+	case OS_THREAD_PRIORITY_ABOVE_NORMAL:
+		native = THREAD_PRIORITY_ABOVE_NORMAL;
+		break;
+	default:
+		native = THREAD_PRIORITY_NORMAL;
+		break;
+	}
+
+	return SetThreadPriority(GetCurrentThread(), native) ? 0 : -1;
+}

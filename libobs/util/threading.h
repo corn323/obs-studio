@@ -92,6 +92,22 @@ EXPORT int os_sem_wait(os_sem_t *sem);
 
 EXPORT void os_set_thread_name(const char *name);
 
+/*
+ * CornOBS: set the scheduling priority of the *calling* thread. Used to keep
+ * the latency-sensitive media threads (compositor, video-io, encode submit,
+ * audio) from being starved by unrelated background work - especially a
+ * CPU-bound game sharing the machine. Best effort: a failure is logged at
+ * debug level and otherwise ignored, and the values map to the closest
+ * platform equivalent.
+ */
+enum os_thread_priority {
+	OS_THREAD_PRIORITY_NORMAL,
+	OS_THREAD_PRIORITY_ABOVE_NORMAL,
+	OS_THREAD_PRIORITY_HIGH,
+};
+
+EXPORT int os_set_thread_priority(enum os_thread_priority priority);
+
 #ifdef _MSC_VER
 #define THREAD_LOCAL __declspec(thread)
 #else
