@@ -28,7 +28,8 @@ OBSAbout::OBSAbout(QWidget *parent) : QDialog(parent), ui(new Ui::OBSAbout)
 
 	QString ver = obs_get_version_string();
 
-	ui->version->setText(ver + bitness);
+	/* CornOBS: performance-focused fork; make the OBS base version explicit. */
+	ui->version->setText(QStringLiteral("CornOBS \xE2\x80\xA2 based on OBS Studio ") + ver + bitness);
 
 	ui->contribute->setText(QTStr("About.Contribute"));
 

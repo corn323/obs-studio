@@ -41,11 +41,14 @@ if("${CMAKE_CURRENT_BINARY_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
 # Set default global project variables
-set(OBS_COMPANY_NAME "OBS Project")
-set(OBS_PRODUCT_NAME "OBS Studio")
-set(OBS_WEBSITE "https://www.obsproject.com")
-set(OBS_COMMENTS "Free and open source software for video recording and live streaming")
-set(OBS_LEGAL_COPYRIGHT "(C) Lain Bailey")
+# CornOBS: personal performance-focused fork of OBS Studio. Product/brand strings
+# only -- config directory, bundle identifiers and GUIDs are intentionally left as
+# upstream so this stays a drop-in replacement and existing profiles/scenes load.
+set(OBS_COMPANY_NAME "CornOBS Project")
+set(OBS_PRODUCT_NAME "CornOBS")
+set(OBS_WEBSITE "https://github.com/corn323/obs-studio")
+set(OBS_COMMENTS "Performance-focused fork of OBS Studio for recording and live streaming")
+set(OBS_LEGAL_COPYRIGHT "(C) Lain Bailey / OBS Project -- CornOBS fork")
 set(OBS_CMAKE_VERSION 3.0.0)
 
 # Configure default version strings
