@@ -49,9 +49,27 @@ profiles / scene collections load without migration.
 | Phase 2 | Windows: media threads register with MMCSS ("Pro Audio") and opt out of per-thread power throttling / EcoQoS, so a foreground game cannot park them on E-cores or slow them down | done |
 | Phase 2 | Opt-in `CORNOBS_SCHED=ccd`: confines the compositor + GPU-encode threads to the largest CPU die (L3 group) on multi-CCD Ryzen; deliberate no-op on single-die parts and when unset | done |
 | Phase 0 | `tools/cornobs/soak-monitor.ps1` + `docs/PERF_BASELINE.md` for before/after CPU & memory measurement | done |
+| Fork fit | Auto-updater and "What's New" fetch hard-disabled (`IsUpdaterDisabled()` always true, `EnableAutoUpdates` default false) — a fork has nothing to update against and the updater could replace CornOBS with stock OBS | done |
 | Memory | Core A/V pipeline (video-io cache `MAX_CACHE_SIZE 16`, GPU-encode texture pool `NUM_ENCODE_TEXTURES`, RTMP `check_to_drop_frames` + DBR) verified already bounded — left untouched on purpose | n/a |
 | Phase 3 | CEF disk-cache / media-cache caps for browser sources | deferred — the code lives in the `obs-browser` submodule; needs a fork of that repo too before CI can build it |
 | Phase 3 | x64-only packaging | not needed (CI only produces x64) |
+
+## Known feature gaps in a fork build
+
+The native **Twitch / YouTube integration** (auto chat dock, "Stream Information"
+title/category panel, Manage Broadcast) is **compiled out**. `feature-twitch.cmake`
+and `feature-youtube.cmake` only build it when a platform **OAuth client ID +
+hash** is provided at build time, and OBS's OAuth flow additionally routes token
+exchange through OBS Project's own auth proxy (`auth.obsproject.com`). A fork
+build has neither. Workarounds:
+
+- **Chat** and **title/category**: add them back as **Custom Browser Docks**
+  (Docks → Custom Browser Docks) pointing at the Twitch/YouTube chat popout and
+  the Twitch Stream Manager / YouTube Studio. No OAuth needed. Streaming itself
+  works normally with a **stream key**.
+- Restoring the *native* panels would need registering your own Twitch app and
+  reworking `TwitchAuth` to a proxy-less device-code flow (YouTube also needs
+  Google app verification for live scopes — impractical). Not done.
 
 ## Building
 
