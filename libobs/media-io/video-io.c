@@ -193,6 +193,7 @@ static void *video_thread(void *param)
 
 	os_set_thread_name("video-io: video thread");
 	os_set_thread_priority(OS_THREAD_PRIORITY_ABOVE_NORMAL);
+	os_thread_enable_realtime_media();
 
 	const char *video_thread_name =
 		profile_store_name(obs_get_profiler_name_store(), "video_thread(%s)", video->info.name);

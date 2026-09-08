@@ -18,6 +18,8 @@
 #include "threading.h"
 #include "util/platform.h"
 
+#include <string.h>
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -229,4 +231,49 @@ int os_set_thread_priority(enum os_thread_priority priority)
 	}
 
 	return SetThreadPriority(GetCurrentThread(), native) ? 0 : -1;
+}
+
+#ifndef THREAD_POWER_THROTTLING_CURRENT_VERSION
+#define THREAD_POWER_THROTTLING_CURRENT_VERSION 1
+#define THREAD_POWER_THROTTLING_EXECUTION_SPEED 0x1
+typedef struct _THREAD_POWER_THROTTLING_STATE {
+	ULONG Version;
+	ULONG ControlMask;
+	ULONG StateMask;
+} THREAD_POWER_THROTTLING_STATE;
+#endif
+
+/* ThreadPowerThrottling THREAD_INFORMATION_CLASS value (Win10 1809+). */
+#define CORNOBS_ThreadPowerThrottling ((THREAD_INFORMATION_CLASS)3)
+
+void os_thread_enable_realtime_media(void)
+{
+	/* MMCSS: register with the multimedia class scheduler so the thread
+	 * gets glitch-resistant scheduling even while a game holds the
+	 * foreground. Loaded dynamically to avoid linking avrt. The task
+	 * handle is deliberately leaked - it is meant to live for the whole
+	 * lifetime of the thread and these threads run until shutdown. */
+	static HMODULE avrt = NULL;
+	if (!avrt)
+		avrt = LoadLibraryW(L"avrt.dll");
+
+	if (avrt) {
+		typedef HANDLE(WINAPI * set_mm_char_t)(LPCWSTR, LPDWORD);
+		const set_mm_char_t set_mm_char =
+			(set_mm_char_t)GetProcAddress(avrt, "AvSetMmThreadCharacteristicsW");
+		if (set_mm_char) {
+			DWORD task_index = 0;
+			set_mm_char(L"Pro Audio", &task_index);
+		}
+	}
+
+	/* Opt this thread out of EcoQoS / power throttling so Windows will
+	 * not park it on an efficiency core or slow it down when OBS is not
+	 * the foreground process. Available on Windows 10 1809+. */
+	THREAD_POWER_THROTTLING_STATE state;
+	memset(&state, 0, sizeof(state));
+	state.Version = THREAD_POWER_THROTTLING_CURRENT_VERSION;
+	state.ControlMask = THREAD_POWER_THROTTLING_EXECUTION_SPEED;
+	state.StateMask = 0; /* 0 = throttling disabled */
+	SetThreadInformation(GetCurrentThread(), CORNOBS_ThreadPowerThrottling, &state, sizeof(state));
 }

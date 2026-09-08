@@ -1175,6 +1175,7 @@ void *obs_graphics_thread(void *param)
 
 	os_set_thread_name("libobs: graphics thread");
 	os_set_thread_priority(OS_THREAD_PRIORITY_ABOVE_NORMAL);
+	os_thread_enable_realtime_media();
 
 	const char *video_thread_name = profile_store_name(obs_get_profiler_name_store(),
 							   "obs_graphics_thread(%g" NBSP "ms)", interval / 1000000.);

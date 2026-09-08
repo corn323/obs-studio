@@ -321,3 +321,9 @@ int os_set_thread_priority(enum os_thread_priority priority)
 	return -1;
 #endif
 }
+
+void os_thread_enable_realtime_media(void)
+{
+	/* No portable equivalent of Windows MMCSS / power throttling opt-out;
+	 * os_set_thread_priority() already covers what these platforms offer. */
+}

@@ -46,8 +46,10 @@ profiles / scene collections load without migration.
 | Phase 1 | Hardware-encoder default extended to Intel QSV and AMD AMF (upstream auto-selected NVIDIA only); x264 one click away; Advanced-output default left as upstream on purpose | done |
 | Phase 1 | VolumeMeter repaint 60 Hz → 30 Hz + skip when not visible | done |
 | Phase 1 | Preview auto-pause on minimize | already upstream (`OBSBasic::changeEvent`) |
+| Phase 2 | Windows: media threads register with MMCSS ("Pro Audio") and opt out of per-thread power throttling / EcoQoS, so a foreground game cannot park them on E-cores or slow them down | done |
 | Phase 0 | Measurement baseline + soak-test tooling | planned |
-| Phase 2 | Runtime CPU-topology detection; CCD-aware adaptive thread affinity; bounded output/encode queues with explicit drop policy | planned |
+| Phase 2 | Bounded output/encode queues with explicit drop policy | planned |
+| Phase 2 | CCD-aware adaptive thread affinity | deferred — needs per-rig validation; MMCSS + throttling opt-out covers the main "game in foreground" case first |
 | Phase 3 | CEF (browser source) memory watchdog; x64-only packaging | optional |
 
 ## Building

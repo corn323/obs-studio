@@ -108,6 +108,15 @@ enum os_thread_priority {
 
 EXPORT int os_set_thread_priority(enum os_thread_priority priority);
 
+/*
+ * CornOBS: opt the *calling* thread into the platform's real-time media
+ * scheduling and out of power throttling, so it keeps running normally when
+ * a foreground game is saturating the CPU. On Windows this registers the
+ * thread with MMCSS ("Pro Audio") and disables per-thread EcoQoS/power
+ * throttling. No-op elsewhere. Best effort; safe to call once per thread.
+ */
+EXPORT void os_thread_enable_realtime_media(void);
+
 #ifdef _MSC_VER
 #define THREAD_LOCAL __declspec(thread)
 #else
