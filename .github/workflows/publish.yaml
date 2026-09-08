@@ -1,12 +1,9 @@
 name: Publish
 run-name: Publish Repository Actions 🛫
+# CornOBS: disabled - stock release-publish pipeline for the OBS Project's
+# infrastructure, not usable on a fork. Kept for reference / upstream merges.
 on:
-  release:
-    types:
-      - published
-    branches:
-      - master
-      - 'release/**'
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:

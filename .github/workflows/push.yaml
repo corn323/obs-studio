@@ -1,14 +1,11 @@
 name: Push
 run-name: ${{ github.ref_name }} push run 🚀
+# CornOBS: this stock multi-platform pipeline targets the OBS Project's
+# private CI runners and cannot complete on this fork. Disabled so pushes
+# and release tags don't spawn failing runs. CornOBS builds via
+# .github/workflows/cornobs.yaml. Kept for reference / upstream merges.
 on:
-  push:
-    paths-ignore:
-      - '**.md'
-    branches:
-      - master
-      - 'release/**'
-    tags:
-      - '*'
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
