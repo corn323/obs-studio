@@ -41,8 +41,12 @@ profiles / scene collections load without migration.
 | Phase | Area | Status |
 |-------|------|--------|
 | Rebrand | Display name / exe metadata → CornOBS | done |
+| Build | CI builds `Release` so LTO/IPO is on (upstream dev default `RelWithDebInfo` disables it) | done |
+| Phase 1 | Thread-priority API + raised priority for compositor / video-io / GPU-encode / audio threads | done |
+| Phase 1 | Hardware-encoder default extended to Intel QSV and AMD AMF (upstream auto-selected NVIDIA only); x264 one click away; Advanced-output default left as upstream on purpose | done |
+| Phase 1 | VolumeMeter repaint 60 Hz → 30 Hz + skip when not visible | done |
+| Phase 1 | Preview auto-pause on minimize | already upstream (`OBSBasic::changeEvent`) |
 | Phase 0 | Measurement baseline + soak-test tooling | planned |
-| Phase 1 | LTO/IPO build preset; thread-priority API; hardware-encoder default (x264 one click away); VolumeMeter refresh throttle; preview auto-pause when hidden | planned |
 | Phase 2 | Runtime CPU-topology detection; CCD-aware adaptive thread affinity; bounded output/encode queues with explicit drop policy | planned |
 | Phase 3 | CEF (browser source) memory watchdog; x64-only packaging | optional |
 
