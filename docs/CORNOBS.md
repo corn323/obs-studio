@@ -47,10 +47,11 @@ profiles / scene collections load without migration.
 | Phase 1 | VolumeMeter repaint 60 Hz → 30 Hz + skip when not visible | done |
 | Phase 1 | Preview auto-pause on minimize | already upstream (`OBSBasic::changeEvent`) |
 | Phase 2 | Windows: media threads register with MMCSS ("Pro Audio") and opt out of per-thread power throttling / EcoQoS, so a foreground game cannot park them on E-cores or slow them down | done |
-| Phase 0 | Measurement baseline + soak-test tooling | planned |
-| Phase 2 | Bounded output/encode queues with explicit drop policy | planned |
-| Phase 2 | CCD-aware adaptive thread affinity | deferred — needs per-rig validation; MMCSS + throttling opt-out covers the main "game in foreground" case first |
-| Phase 3 | CEF (browser source) memory watchdog; x64-only packaging | optional |
+| Phase 2 | Opt-in `CORNOBS_SCHED=ccd`: confines the compositor + GPU-encode threads to the largest CPU die (L3 group) on multi-CCD Ryzen; deliberate no-op on single-die parts and when unset | done |
+| Phase 0 | `tools/cornobs/soak-monitor.ps1` + `docs/PERF_BASELINE.md` for before/after CPU & memory measurement | done |
+| Memory | Core A/V pipeline (video-io cache `MAX_CACHE_SIZE 16`, GPU-encode texture pool `NUM_ENCODE_TEXTURES`, RTMP `check_to_drop_frames` + DBR) verified already bounded — left untouched on purpose | n/a |
+| Phase 3 | CEF disk-cache / media-cache caps for browser sources | deferred — the code lives in the `obs-browser` submodule; needs a fork of that repo too before CI can build it |
+| Phase 3 | x64-only packaging | not needed (CI only produces x64) |
 
 ## Building
 

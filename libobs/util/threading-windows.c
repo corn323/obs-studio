@@ -19,6 +19,7 @@
 #include "util/platform.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -276,4 +277,73 @@ void os_thread_enable_realtime_media(void)
 	state.ControlMask = THREAD_POWER_THROTTLING_EXECUTION_SPEED;
 	state.StateMask = 0; /* 0 = throttling disabled */
 	SetThreadInformation(GetCurrentThread(), CORNOBS_ThreadPowerThrottling, &state, sizeof(state));
+}
+
+static int popcount64(uint64_t v)
+{
+	int c = 0;
+	while (v) {
+		v &= v - 1;
+		c++;
+	}
+	return c;
+}
+
+uint64_t os_thread_pin_to_media_die(void)
+{
+	char *mode = getenv("CORNOBS_SCHED");
+	if (!mode || strcmp(mode, "ccd") != 0)
+		return 0;
+
+	DWORD len = 0;
+	GetLogicalProcessorInformationEx(RelationCache, NULL, &len);
+	if (GetLastError() != ERROR_INSUFFICIENT_BUFFER || len == 0)
+		return 0;
+
+	SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buf = bmalloc(len);
+	if (!GetLogicalProcessorInformationEx(RelationCache, buf, &len)) {
+		bfree(buf);
+		return 0;
+	}
+
+	/* Collect the affinity mask of every L3 cache. On Ryzen each L3 is one
+	 * CCX/CCD, so this enumerates the dies. Only single-group systems
+	 * (<= 64 logical processors) are handled; bail otherwise. */
+	uint64_t die_masks[16];
+	int die_count = 0;
+
+	BYTE *p = (BYTE *)buf;
+	BYTE *end = p + len;
+	while (p < end && die_count < 16) {
+		SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *info = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)p;
+		if (info->Relationship == RelationCache && info->Cache.Level == 3 &&
+		    info->Cache.GroupCount == 1 && info->Cache.GroupMask.Group == 0) {
+			die_masks[die_count++] = (uint64_t)info->Cache.GroupMask.Mask;
+		} else if (info->Relationship == RelationCache && info->Cache.Level == 3) {
+			/* multi-group / group != 0: out of scope, don't guess */
+			bfree(buf);
+			return 0;
+		}
+		p += info->Size;
+	}
+	bfree(buf);
+
+	if (die_count < 2)
+		return 0; /* single die: leave scheduling to the OS */
+
+	/* Pick the die with the most logical processors (ties -> first). */
+	uint64_t best = die_masks[0];
+	int best_pop = popcount64(die_masks[0]);
+	for (int i = 1; i < die_count; i++) {
+		int pop = popcount64(die_masks[i]);
+		if (pop > best_pop) {
+			best_pop = pop;
+			best = die_masks[i];
+		}
+	}
+
+	if (best_pop < 4)
+		return 0; /* too small to be worth confining to */
+
+	return SetThreadAffinityMask(GetCurrentThread(), (DWORD_PTR)best) ? best : 0;
 }

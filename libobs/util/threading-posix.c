@@ -327,3 +327,9 @@ void os_thread_enable_realtime_media(void)
 	/* No portable equivalent of Windows MMCSS / power throttling opt-out;
 	 * os_set_thread_priority() already covers what these platforms offer. */
 }
+
+uint64_t os_thread_pin_to_media_die(void)
+{
+	/* CCD/CCX pinning is only implemented for Windows so far. */
+	return 0;
+}
