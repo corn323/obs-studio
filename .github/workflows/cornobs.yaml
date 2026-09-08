@@ -1,0 +1,51 @@
+name: CornOBS Build
+run-name: CornOBS ${{ github.ref_name }} 🌽
+on:
+  push:
+    branches:
+      - cornobs
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cornobs-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-build:
+    name: Windows x64 🪟
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build CornOBS 🧱
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Package CornOBS 📀
+        uses: ./.github/actions/package-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+          package: 'true'
+
+      - name: Compute Short Hash 🆔
+        id: id
+        run: '"hash=$($Env:GITHUB_SHA.Substring(0,9))" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8'
+
+      - name: Upload Portable Zip 📡
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: CornOBS-windows-x64-${{ steps.id.outputs.hash }}
+          path: ${{ github.workspace }}/build_x64/obs-studio-*-windows-x64.zip
+          if-no-files-found: error
