@@ -36,6 +36,15 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Test Windows Scheduler
+        run: |
+          cmake -S test/scheduler -B build_scheduler_tests -G "Visual Studio 17 2022" -A x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build_scheduler_tests --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir build_scheduler_tests -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Build CornOBS 🧱
         uses: ./.github/actions/build-obs
         with:

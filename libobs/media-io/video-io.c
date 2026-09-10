@@ -192,8 +192,7 @@ static void *video_thread(void *param)
 	struct video_output *video = param;
 
 	os_set_thread_name("video-io: video thread");
-	os_set_thread_priority(OS_THREAD_PRIORITY_ABOVE_NORMAL);
-	os_thread_enable_realtime_media();
+	struct os_thread_scheduler *scheduler = os_thread_scheduler_begin(OS_THREAD_ROLE_VIDEO_IO);
 
 	const char *video_thread_name =
 		profile_store_name(obs_get_profiler_name_store(), "video_thread(%s)", video->info.name);
@@ -213,6 +212,7 @@ static void *video_thread(void *param)
 		profile_reenable_thread();
 	}
 
+	os_thread_scheduler_end(scheduler);
 	return NULL;
 }
 

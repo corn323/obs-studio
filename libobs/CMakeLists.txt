@@ -123,6 +123,7 @@ target_sources(
     util/task.h
     util/text-lookup.c
     util/text-lookup.h
+    util/threading-scheduler.h
     util/threading.h
     util/utf8.c
     util/utf8.h
@@ -347,6 +348,7 @@ set(
   util/task.h
   util/text-lookup.h
   util/threading-posix.h
+  util/threading-scheduler.h
   util/threading.h
   util/uthash.h
   util/util.hpp

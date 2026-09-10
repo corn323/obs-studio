@@ -42,12 +42,10 @@ profiles / scene collections load without migration.
 |-------|------|--------|
 | Rebrand | Display name / exe metadata → CornOBS | done |
 | Build | CI builds `Release` so LTO/IPO is on (upstream dev default `RelWithDebInfo` disables it) | done |
-| Phase 1 | Thread-priority API + raised priority for compositor / video-io / GPU-encode / audio threads | done |
+| Scheduler | Centralized Windows thread roles, conservative Audio/Playback MMCSS, CPU Sets topology and stable locality; `CORNOBS_SCHED=off/auto` | implemented; hardware A/B pending — see [Windows Scheduler](WINDOWS_SCHEDULER.md) |
 | Phase 1 | Hardware-encoder default extended to Intel QSV and AMD AMF (upstream auto-selected NVIDIA only); x264 one click away; Advanced-output default left as upstream on purpose | done |
 | Phase 1 | VolumeMeter repaint 60 Hz → 30 Hz + skip when not visible | done |
 | Phase 1 | Preview auto-pause on minimize | already upstream (`OBSBasic::changeEvent`) |
-| Phase 2 | Windows: media threads register with MMCSS ("Pro Audio") and opt out of per-thread power throttling / EcoQoS, so a foreground game cannot park them on E-cores or slow them down | done |
-| Phase 2 | Opt-in `CORNOBS_SCHED=ccd`: confines the compositor + GPU-encode threads to the largest CPU die (L3 group) on multi-CCD Ryzen; deliberate no-op on single-die parts and when unset | done |
 | Phase 0 | `tools/cornobs/soak-monitor.ps1` + `docs/PERF_BASELINE.md` for before/after CPU & memory measurement | done |
 | Fork fit | Auto-updater and "What's New" fetch hard-disabled (`IsUpdaterDisabled()` always true, `EnableAutoUpdates` default false) — a fork has nothing to update against and the updater could replace CornOBS with stock OBS | done |
 | Memory | Core A/V pipeline (video-io cache `MAX_CACHE_SIZE 16`, GPU-encode texture pool `NUM_ENCODE_TEXTURES`, RTMP `check_to_drop_frames` + DBR) verified already bounded — left untouched on purpose | n/a |
@@ -73,8 +71,9 @@ build has neither. Workarounds:
 
 ## Building
 
-Cloud CI only (no local toolchain required). Push to `master` on the fork triggers
-`.github/workflows/push.yaml` → `build-project.yaml`; download the
-`obs-studio-windows-x64-<hash>` artifact (portable zip) from the run.
+`.github/workflows/cornobs.yaml` builds Windows x64 Release on `windows-2022`.
+It runs scheduler logic/API-failure tests before the full build and packaging.
+Pushes to `cornobs` or a manual workflow dispatch trigger it; download the
+`CornOBS-windows-x64-<hash>` artifact (portable zip) from the run.
 
 Actions must be enabled once in the fork's **Actions** tab (forks default to disabled).

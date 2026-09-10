@@ -29,9 +29,8 @@ static void *gpu_encode_thread(void *data)
 	da_init(encoders);
 
 	os_set_thread_name("obs gpu encode thread");
-	os_set_thread_priority(OS_THREAD_PRIORITY_ABOVE_NORMAL);
-	os_thread_enable_realtime_media();
-	os_thread_pin_to_media_die();
+	struct os_thread_scheduler *scheduler = os_thread_scheduler_begin(OS_THREAD_ROLE_GPU_ENCODE);
+
 	const char *gpu_encode_thread_name = profile_store_name(
 		obs_get_profiler_name_store(), "obs_gpu_encode_thread(%g" NBSP "ms)", interval / 1000000.);
 	profile_register_root(gpu_encode_thread_name, interval);
@@ -224,6 +223,7 @@ static void *gpu_encode_thread(void *data)
 	}
 
 	da_free(encoders);
+	os_thread_scheduler_end(scheduler);
 	return NULL;
 }
 

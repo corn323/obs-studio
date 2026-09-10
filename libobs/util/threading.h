@@ -25,6 +25,7 @@
  */
 
 #include "c99defs.h"
+#include "threading-scheduler.h"
 
 #ifndef _MSC_VER
 #include <errno.h>
@@ -107,26 +108,6 @@ enum os_thread_priority {
 };
 
 EXPORT int os_set_thread_priority(enum os_thread_priority priority);
-
-/*
- * CornOBS: opt the *calling* thread into the platform's real-time media
- * scheduling and out of power throttling, so it keeps running normally when
- * a foreground game is saturating the CPU. On Windows this registers the
- * thread with MMCSS ("Pro Audio") and disables per-thread EcoQoS/power
- * throttling. No-op elsewhere. Best effort; safe to call once per thread.
- */
-EXPORT void os_thread_enable_realtime_media(void);
-
-/*
- * CornOBS: opt-in. When the environment variable CORNOBS_SCHED is set to
- * "ccd", confine the calling thread to the CPU die (last-level-cache group)
- * that has the most cores, so the tightly-coupled compositor / video-io /
- * GPU-encode threads stay on one CCX and don't pay cross-die latency while
- * a game runs on the other die. No-op unless opted in, on single-die CPUs,
- * or on anything that isn't Windows. Returns the affinity mask applied, or
- * 0 if nothing was done.
- */
-EXPORT uint64_t os_thread_pin_to_media_die(void);
 
 #ifdef _MSC_VER
 #define THREAD_LOCAL __declspec(thread)

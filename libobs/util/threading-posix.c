@@ -322,14 +322,18 @@ int os_set_thread_priority(enum os_thread_priority priority)
 #endif
 }
 
-void os_thread_enable_realtime_media(void)
+struct os_thread_scheduler *os_thread_scheduler_begin(enum os_thread_role role)
 {
-	/* No portable equivalent of Windows MMCSS / power throttling opt-out;
-	 * os_set_thread_priority() already covers what these platforms offer. */
+	/* Preserve existing non-Windows behavior; topology policy is Windows-only. */
+	if (role == OS_THREAD_ROLE_AUDIO)
+		os_set_thread_priority(OS_THREAD_PRIORITY_HIGH);
+	else if (role == OS_THREAD_ROLE_GRAPHICS || role == OS_THREAD_ROLE_VIDEO_IO ||
+		 role == OS_THREAD_ROLE_GPU_ENCODE)
+		os_set_thread_priority(OS_THREAD_PRIORITY_ABOVE_NORMAL);
+	return NULL;
 }
 
-uint64_t os_thread_pin_to_media_die(void)
+void os_thread_scheduler_end(struct os_thread_scheduler *state)
 {
-	/* CCD/CCX pinning is only implemented for Windows so far. */
-	return 0;
+	UNUSED_PARAMETER(state);
 }
