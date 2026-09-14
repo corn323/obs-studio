@@ -1,4 +1,5 @@
 #include "VolumeMeter.hpp"
+#include <utility/CornAdaptive.hpp>
 
 #include <OBSApp.hpp>
 #include <QEvent>
@@ -332,10 +333,24 @@ VolumeMeter::VolumeMeter(QWidget *parent, obs_source_t *source)
 	if (!updateTimer) {
 		updateTimer = new QTimer(qApp);
 		updateTimer->setTimerType(Qt::PreciseTimer);
-		updateTimer->start(16);
+		/* CornOBS: 30 Hz instead of 60 Hz. A level meter reads the same to
+		 * the eye at 30 Hz (peak-hold is measured in seconds), and this
+		 * halves the repaint work, which adds up with several audio
+		 * tracks / meters on screen. */
+		updateTimer->start(33);
+		connect(updateTimer, &QTimer::timeout, updateTimer, [] {
+			const int interval = int(CornAdaptive::MeterInterval());
+			if (updateTimer->interval() != interval)
+				updateTimer->setInterval(interval);
+		});
 	}
 
 	connect(updateTimer, &QTimer::timeout, this, [this]() {
+		/* Don't queue repaints for a meter the user can't see (dock
+		 * hidden, tabbed behind another, window minimised). */
+		if (!isVisible())
+			return;
+
 		if (needLayoutChange()) {
 			doLayout();
 			update();

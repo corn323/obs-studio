@@ -1169,9 +1169,10 @@ void *obs_graphics_thread(void *param)
 
 	const uint64_t interval = obs->video.video_frame_interval_ns;
 
-	obs->video.video_time = os_gettime_ns();
-
 	os_set_thread_name("libobs: graphics thread");
+	struct os_thread_scheduler *scheduler = os_thread_scheduler_begin(OS_THREAD_ROLE_GRAPHICS);
+
+	obs->video.video_time = os_gettime_ns();
 
 	const char *video_thread_name = profile_store_name(obs_get_profiler_name_store(),
 							   "obs_graphics_thread(%g" NBSP "ms)", interval / 1000000.);
@@ -1199,5 +1200,6 @@ void *obs_graphics_thread(void *param)
 #endif
 
 	UNUSED_PARAMETER(param);
+	os_thread_scheduler_end(scheduler);
 	return NULL;
 }

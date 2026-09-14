@@ -48,6 +48,9 @@ target_sources(
     obs-windows.c
     util/pipe-windows.c
     util/platform-windows.c
+    util/threading-scheduler-policy.c
+    util/threading-scheduler-policy.h
+    util/threading-scheduler-windows.c
     util/threading-windows.c
     util/threading-windows.h
     util/windows/CoTaskMemPtr.hpp

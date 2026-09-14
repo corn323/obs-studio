@@ -61,6 +61,7 @@
 #include <QWidgetAction>
 
 #include <mutex>
+#include <utility/CornAdaptive.hpp>
 #ifdef _WIN32
 #include <sstream>
 #endif
@@ -93,6 +94,26 @@ extern volatile long insideEventLoop;
 extern bool restart;
 
 extern bool EncoderAvailable(const char *encoder);
+
+/*
+ * CornOBS: choose the best available H.264 encoder for a fresh profile's
+ * Simple output. Hardware encoders (NVENC / QSV / AMF) move video encoding
+ * off the CPU, which is the single largest CPU saving while streaming -
+ * particularly when a demanding game already saturates the cores. Upstream
+ * only auto-selected NVENC; this also covers Intel and AMD GPUs. Twitch
+ * ingests H.264, so AV1/HEVC variants are deliberately not defaulted here,
+ * and x264 remains one click away in Settings.
+ */
+static const char *CornOBSBestSimpleEncoder()
+{
+	if (EncoderAvailable("obs_nvenc_h264_tex") || EncoderAvailable("ffmpeg_nvenc"))
+		return SIMPLE_ENCODER_NVENC;
+	if (EncoderAvailable("obs_qsv11_v2") || EncoderAvailable("obs_qsv11"))
+		return SIMPLE_ENCODER_QSV;
+	if (EncoderAvailable("h264_texture_amf"))
+		return SIMPLE_ENCODER_AMD;
+	return SIMPLE_ENCODER_X264;
+}
 
 extern void RegisterTwitchAuth();
 extern void RegisterRestreamAuth();
@@ -881,12 +902,10 @@ bool OBSBasic::InitBasicConfigDefaults()
 void OBSBasic::InitBasicConfigDefaults2()
 {
 	bool oldEncDefaults = config_get_bool(App()->GetUserConfig(), "General", "Pre23Defaults");
-	bool useNV = EncoderAvailable("ffmpeg_nvenc") && !oldEncDefaults;
+	const char *simpleEncoder = oldEncDefaults ? SIMPLE_ENCODER_X264 : CornOBSBestSimpleEncoder();
 
-	config_set_default_string(activeConfiguration, "SimpleOutput", "StreamEncoder",
-				  useNV ? SIMPLE_ENCODER_NVENC : SIMPLE_ENCODER_X264);
-	config_set_default_string(activeConfiguration, "SimpleOutput", "RecEncoder",
-				  useNV ? SIMPLE_ENCODER_NVENC : SIMPLE_ENCODER_X264);
+	config_set_default_string(activeConfiguration, "SimpleOutput", "StreamEncoder", simpleEncoder);
+	config_set_default_string(activeConfiguration, "SimpleOutput", "RecEncoder", simpleEncoder);
 
 	const char *aac_default = "ffmpeg_aac";
 	if (EncoderAvailable("CoreAudio_AAC")) {
@@ -1313,6 +1332,7 @@ void OBSBasic::OBSInit()
 	}
 
 	OBSBasicStats::InitializeValues();
+	cornAdaptive = new CornAdaptive(this, [this] { return ui->preview->GetDisplay(); });
 
 	/* ----------------------- */
 	/* Add multiview menu      */
@@ -1398,7 +1418,7 @@ void OBSBasic::OnFirstLoad()
 
 #ifdef WHATSNEW_ENABLED
 	/* Attempt to load init screen if available */
-	if (cef) {
+	if (cef && !App()->IsUpdaterDisabled()) {
 		WhatsNewInfoThread *wnit = new WhatsNewInfoThread();
 		connect(wnit, &WhatsNewInfoThread::Result, this, &OBSBasic::ReceivedIntroJson, Qt::QueuedConnection);
 
@@ -1420,6 +1440,8 @@ OBSBasic::~OBSBasic() {}
 
 void OBSBasic::applicationShutdown() noexcept
 {
+	delete cornAdaptive;
+	cornAdaptive = nullptr;
 	/* clear out UI event queue */
 	QApplication::sendPostedEvents(nullptr);
 #ifndef __APPLE__
@@ -2127,9 +2149,9 @@ void OBSBasic::UpdateTitleBar()
 	const char *profile = config_get_string(App()->GetUserConfig(), "Basic", "Profile");
 	const char *sceneCollection = config_get_string(App()->GetUserConfig(), "Basic", "SceneCollection");
 
-	name << "OBS ";
+	name << "CornOBS ";
 	if (previewProgramMode) {
-		name << "Studio ";
+		name << "(Studio Mode) ";
 	}
 
 	name << App()->GetVersionString(false);

@@ -1,6 +1,10 @@
 target_sources(
   obs-studio
   PRIVATE
+    utility/CornAdaptive.cpp
+    utility/CornAdaptive.hpp
+    utility/CornPressure.c
+    utility/CornPressure.h
     utility/AdvancedOutput.cpp
     utility/AdvancedOutput.hpp
     utility/BaseLexer.hpp

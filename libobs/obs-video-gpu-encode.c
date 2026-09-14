@@ -19,6 +19,24 @@
 
 void handle_encoder_group_reconfigure_request(obs_encoder_t *encoder);
 
+/* Peak host-side texture-encoder call duration since the diagnostics reader.
+ * This includes plugin synchronization, not GPU execution time. */
+static volatile long corn_submission_peak_us;
+
+uint32_t obs_take_gpu_encode_submission_peak_us(void)
+{
+	return (uint32_t)os_atomic_exchange_long(&corn_submission_peak_us, 0);
+}
+
+static void corn_record_submission(uint64_t duration_ns)
+{
+	uint64_t us = duration_ns / 1000;
+	long sample = (long)(us > INT32_MAX ? INT32_MAX : us);
+	long previous = os_atomic_load_long(&corn_submission_peak_us);
+	while (sample > previous && !os_atomic_compare_exchange_long(&corn_submission_peak_us, &previous, sample)) {
+	}
+}
+
 #define NBSP "\xC2\xA0"
 static const char *gpu_encode_frame_name = "gpu_encode_frame";
 static void *gpu_encode_thread(void *data)
@@ -31,6 +49,8 @@ static void *gpu_encode_thread(void *data)
 	da_init(encoders);
 
 	os_set_thread_name("obs gpu encode thread");
+	struct os_thread_scheduler *scheduler = os_thread_scheduler_begin(OS_THREAD_ROLE_GPU_ENCODE);
+
 	const char *gpu_encode_thread_name = profile_store_name(
 		obs_get_profiler_name_store(), "obs_gpu_encode_thread(%g" NBSP "ms)", interval / 1000000.);
 	profile_register_root(gpu_encode_thread_name, interval);
@@ -167,6 +187,7 @@ static void *gpu_encode_thread(void *data)
 								       &received);
 			}
 			profile_end(gpu_encode_frame_name);
+			corn_record_submission(os_gettime_ns() - fer_ts);
 
 			/* Generate and enqueue the frame timing metrics, namely
 			 * the CTS (composition time), FER (frame encode request), FERC
@@ -225,6 +246,7 @@ static void *gpu_encode_thread(void *data)
 	}
 
 	da_free(encoders);
+	os_thread_scheduler_end(scheduler);
 	return NULL;
 }
 

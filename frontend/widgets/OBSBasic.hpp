@@ -49,6 +49,7 @@ extern volatile bool recording_paused;
 class ColorSelect;
 class OBSAbout;
 class OBSBasicAdvAudio;
+class CornAdaptive;
 class OBSBasicFilters;
 class OBSBasicInteraction;
 class OBSBasicProperties;
@@ -184,6 +185,7 @@ static inline void ClearProcessPriority()
 #endif
 
 class OBSBasic : public OBSMainWindow {
+	CornAdaptive *cornAdaptive = nullptr;
 	Q_OBJECT
 	Q_PROPERTY(QIcon imageIcon READ GetImageIcon WRITE SetImageIcon DESIGNABLE true)
 	Q_PROPERTY(QIcon colorIcon READ GetColorIcon WRITE SetColorIcon DESIGNABLE true)

@@ -1,9 +1,10 @@
 name: Scheduled
 run-name: Scheduled Repository Actions ⏰
+# CornOBS: daily cron disabled - this runs OBS Project maintenance jobs
+# (translations, service checks, ...) that don't apply to a fork and would
+# just fail every night. Kept for reference / upstream merges.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: 17 0 * * *
 permissions:
   contents: write
 concurrency:

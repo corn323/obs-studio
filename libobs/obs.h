@@ -912,6 +912,11 @@ EXPORT uint64_t obs_get_frame_interval_ns(void);
 
 EXPORT uint32_t obs_get_total_frames(void);
 EXPORT uint32_t obs_get_lagged_frames(void);
+/** Destructive diagnostics read; host call peak, not GPU execution time. */
+EXPORT uint32_t obs_take_gpu_encode_submission_peak_us(void);
+
+/** Optional display-only cap. Zero restores the compositor's cadence. */
+EXPORT void obs_display_set_max_fps(obs_display_t *display, uint32_t fps);
 
 OBS_DEPRECATED EXPORT bool obs_nv12_tex_active(void);
 OBS_DEPRECATED EXPORT bool obs_p010_tex_active(void);

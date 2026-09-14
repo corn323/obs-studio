@@ -249,6 +249,17 @@ void render_display(struct obs_display *display)
 	cx = display->next_cx;
 	cy = display->next_cy;
 	update_color_space = display->update_color_space;
+	uint64_t now = os_gettime_ns();
+	/* Skip the whole swapchain pass, not just its draw callback. Resizes and
+	 * color changes must still be serviced immediately. */
+	if (display->min_render_interval_ns && display->last_render_ns &&
+	    now >= display->last_render_ns &&
+	    now - display->last_render_ns < display->min_render_interval_ns &&
+	    cx == display->cx && cy == display->cy && !update_color_space) {
+		pthread_mutex_unlock(&display->draw_info_mutex);
+		return;
+	}
+	display->last_render_ns = now;
 
 	display->update_color_space = false;
 
@@ -282,6 +293,15 @@ void obs_display_set_enabled(obs_display_t *display, bool enable)
 {
 	if (display)
 		display->enabled = enable;
+}
+
+void obs_display_set_max_fps(obs_display_t *display, uint32_t fps)
+{
+	if (!display)
+		return;
+	pthread_mutex_lock(&display->draw_info_mutex);
+	display->min_render_interval_ns = fps ? 1000000000ULL / fps : 0;
+	pthread_mutex_unlock(&display->draw_info_mutex);
 }
 
 bool obs_display_enabled(obs_display_t *display)

@@ -1,0 +1,80 @@
+name: CornOBS Build
+run-name: CornOBS ${{ github.ref_name }} 🌽
+on:
+  push:
+    branches:
+      - cornobs
+      - cornobs-dev
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      config:
+        description: Build configuration
+        type: choice
+        default: Release
+        options: [Release, RelWithDebInfo]
+permissions:
+  contents: read
+concurrency:
+  group: cornobs-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-build:
+    name: Windows x64 🪟
+    runs-on: windows-2025-vs2026
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      # Release turns on interprocedural optimization (LTO) via
+      # cmake/common/compiler_common.cmake; RelWithDebInfo does not.
+      CORNOBS_CONFIG: ${{ inputs.config || 'Release' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Test Windows Scheduler
+        run: |
+          cmake -S test/scheduler -B build_scheduler_tests -G "Visual Studio 18 2026" -A x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build_scheduler_tests --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir build_scheduler_tests -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test GPU pressure policy
+        run: |
+          cmake -S test/gpu-pressure -B build_pressure_tests -G "Visual Studio 18 2026" -A x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build_pressure_tests --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir build_pressure_tests -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build CornOBS 🧱
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: ${{ env.CORNOBS_CONFIG }}
+
+      - name: Package CornOBS 📀
+        uses: ./.github/actions/package-obs
+        with:
+          target: x64
+          config: ${{ env.CORNOBS_CONFIG }}
+          package: 'true'
+
+      - name: Compute Short Hash 🆔
+        id: id
+        run: '"hash=$($Env:GITHUB_SHA.Substring(0,9))" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8'
+
+      - name: Upload Portable Zip 📡
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: CornOBS-windows-x64-${{ steps.id.outputs.hash }}
+          path: ${{ github.workspace }}/build_x64/obs-studio-*-windows-x64.zip
+          if-no-files-found: error
