@@ -45,3 +45,26 @@ Local branches initially: cornobs and codex/windows-thread-scheduler matched ori
 ## Completion gate
 
 Promote only after full Windows Release build, scheduler tests and GPU policy tests pass. Retain development branches until the integrated history and remote tips are verified. Hardware performance acceptance is separate and remains pending; no performance gain is claimed.
+
+## Original custom commit dispositions
+
+| Commit | Original change | Final disposition |
+|---|---|---|
+| 18d66e7e1 | CornOBS: rebrand display name and executable metadata | Retained in final implementation/documentation |
+| 5e4979e64 | ci: add dedicated CornOBS Windows x64 build workflow | CI intent retained; updated runner/base version and isolated upstream workflows |
+| 5bc5630c0 | ci: build CornOBS as Release to enable LTO/IPO | CI intent retained; updated runner/base version and isolated upstream workflows |
+| 6147d7760 | libobs: raise priority of the latency-sensitive media threads | Scheduling superseded by f9d64279c role system; bounded-memory findings retained in docs |
+| e2d44bf40 | frontend: cheaper volume meters + hardware encoder default for Intel/AMD | Retained in final implementation/documentation |
+| 176cfe8f3 | libobs: register media threads with MMCSS, opt out of power throttling | Scheduling superseded by f9d64279c role system; bounded-memory findings retained in docs |
+| f37bdca00 | sched+mem: opt-in CCD pinning + soak-test tooling | Scheduling superseded by f9d64279c role system; bounded-memory findings retained in docs |
+| 021681e22 | docs: rewrite README for CornOBS | Retained in final implementation/documentation |
+| 292f88b9f | docs: make README Chinese-primary, English secondary | Retained in final implementation/documentation |
+| bac3c4777 | frontend: disable the auto-updater and What's New for CornOBS | Retained in final implementation/documentation |
+| 92a7d8c87 | docs: note updater-disable and the Twitch/YouTube feature gap | Retained in final implementation/documentation |
+| b6442dc54 | ci: pin OBS_VERSION_OVERRIDE so the release tag can't break version parsing | CI intent retained; updated runner/base version and isolated upstream workflows |
+| 0ccc8ed04 | ci: use a version-shaped tag, silence stock upstream workflows | CI intent retained; updated runner/base version and isolated upstream workflows |
+| f9d64279c | Centralize Windows media thread scheduling with CPU Sets and role policies | Ported; mmcss default added; CPU Sets retained as explicit auto candidate |
+
+The audited original scheduler tip is a second parent of the port history. A history-only merge kept the already reviewed 32.2.2 port tree unchanged; git rev-list HEAD..codex/windows-thread-scheduler returned 0. This preserves commit reachability without reintroducing obsolete intermediate implementations.
+
+The original checkout still contains the user-provided uncommitted PERF_BASELINE.md edits. It was not reset, stashed, or overwritten; all implementation work is in the isolated worktree.
