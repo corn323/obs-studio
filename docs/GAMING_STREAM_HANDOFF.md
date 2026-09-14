@@ -1,6 +1,6 @@
 # Gaming Stream implementation handoff
 
-Status: local implementation on `cornobs-dev`; **not a completed release or hardware acceptance**.
+Status: implementation pushed to `cornobs-dev`; Windows x64 CI build/package passed. **Hardware acceptance remains pending with the user.**
 Base commit `a25e745daf09d8c14f927317db55a18e6be2a4a1` (remote release and development tips verified 2026-09-15).
 Original parent checkout's uncommitted `docs/PERF_BASELINE.md` remains untouched.
 
@@ -29,13 +29,25 @@ Original parent checkout's uncommitted `docs/PERF_BASELINE.md` remains untouched
 - Settings `.ui` parsed as XML; mode combo appears once and widget names are unique: PASS.
 - `git diff --quiet 32.2.2 -- libobs/media-io/audio-io.c`: PASS, exact upstream restoration.
 - `git diff --check`: PASS.
-- Full configure attempted with the existing CMake 3.30.9 and `-G "Visual Studio 18 2026"`: **failed, unsupported generator**. No full Qt/OBS binary built from this change.
+- Full configure attempted with the existing CMake 3.30.9 and `-G "Visual Studio 18 2026"`: **failed, unsupported generator**. Local full build unavailable; the subsequent GitHub Actions full Windows build passed (see below).
 - Existing clang-format 19 formatted frontend changes, then rejected upstream libobs's `Language: C` configuration. Formatting-tool compatibility is not a compiler failure; full repository formatting CI remains unverified.
 
 ## Pending
 
-Full Windows x64 Release build/package with supported CMake/VS2026; Qt settings persistence/cancel/restart and visual inspection; actual minimize/manual preview behavior; stream+recording cadence, Spout2 continuity, AMD H.264/AV1/NVENC runtime; four hardware matrices and network cases. No remote push/CI or release publication performed for this change.
+Qt settings persistence/cancel/restart and visual inspection; actual minimize/manual preview behavior; stream+recording cadence, Spout2 continuity, AMD H.264/AV1/NVENC runtime; four hardware matrices and network cases. Commit `a30165f3f8501ce6bc1c506b4fc3f0a362c76f5c` was pushed only to `cornobs-dev` with user authorization. No release-branch promotion or Release publication performed.
 
 Benchmark procedure and blank results are in [PERF_BASELINE.md](PERF_BASELINE.md). Official preview/minimize, Process Priority, Audio MMCSS, Stats timer, browser lifecycle, hardware encoders and network features were reused; see [audit](UPSTREAM_FEATURE_AUDIT.md).
 
 There is currently **insufficient evidence to recommend CornOBS for performance or justify more optimizers**. Equally, no measurements prove official OBS already meets every target. If repeatable testing shows no meaningful benefit on a target, record: 「此目標硬體不需要 CornOBS，建議使用官方 OBS。」
+
+## GitHub Actions delivery — 2026-09-15 (Asia/Taipei)
+
+[Run 34896516443](https://github.com/corn323/obs-studio/actions/runs/34896516443): success.
+Windows scheduler tests, GPU pressure tests, full Release build, packaging and upload all passed.
+Build log confirms `CornOBS GPU priority: unavailable`.
+
+Artifact: `CornOBS-windows-x64-a30165f3f`, ID `10369636314`, 231793890 bytes.
+GitHub artifact archive digest: `sha256:b4da5f97beff27d8c384b27fb409dc016725017293f4c2a2d0b77cc12bd2d0a3`.
+[Download artifact](https://github.com/corn323/obs-studio/actions/runs/34896516443/artifacts/10369636314).
+This digest is GitHub's outer artifact archive digest, not an independently measured portable ZIP checksum.
+The user will download and perform GUI/game/stream/hardware acceptance. This documentation-only follow-up does not change the built code.
