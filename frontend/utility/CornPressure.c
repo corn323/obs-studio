@@ -9,8 +9,7 @@ bool corn_adaptive_enabled(const char *value)
 	return value && (!strcmp(value, "on") || !strcmp(value, "balanced"));
 }
 
-enum corn_pressure corn_pressure_update(struct corn_pressure_policy *p,
-				       struct corn_pressure_sample s, uint64_t now)
+enum corn_pressure corn_pressure_update(struct corn_pressure_policy *p, struct corn_pressure_sample s, uint64_t now)
 {
 	s.memory_valid = s.memory_valid && isfinite(s.memory_ratio) && s.memory_ratio >= 0;
 	s.render_valid = s.render_valid && isfinite(s.render_ratio) && s.render_ratio >= 0;
@@ -19,18 +18,23 @@ enum corn_pressure corn_pressure_update(struct corn_pressure_policy *p,
 		return CORN_NORMAL;
 	}
 	const double weight = p->initialized ? 0.25 : 1.0;
+	/* A stalled GUI timer is not evidence of continuous recovery. */
+	if (p->initialized && (now < p->last_sample_ms || now - p->last_sample_ms > 1000))
+		p->recovering = false;
+	p->last_sample_ms = now;
 	p->memory_ema = s.memory_valid ? p->memory_ema + weight * (s.memory_ratio - p->memory_ema) : 0;
 	p->render_ema = s.render_valid ? p->render_ema + weight * (s.render_ratio - p->render_ema) : 0;
 	p->initialized = true;
 	double m = p->memory_ema, r = p->render_ema;
 	double lag = s.render_valid && isfinite(s.lag_ratio) ? s.lag_ratio : 0;
 	enum corn_pressure target = CORN_NORMAL;
-	if (m >= 0.95 || r >= 0.95 || lag >= 0.05)
+	if (m >= 0.95 || r >= 0.95 || lag >= 0.05) {
 		target = CORN_CRITICAL;
-	else if (m >= 0.90 || r >= 0.80 || lag >= 0.02)
+	} else if (m >= 0.90 || r >= 0.80 || lag >= 0.02) {
 		target = CORN_HIGH;
-	else if (m >= 0.80 || r >= 0.65 || lag > 0)
+	} else if (m >= 0.80 || r >= 0.65 || lag > 0) {
 		target = CORN_ELEVATED;
+	}
 	if (target > p->state) {
 		/* Escalate promptly after the EMA; recovery has the long cooldown. */
 		p->state = target;
@@ -45,8 +49,8 @@ enum corn_pressure corn_pressure_update(struct corn_pressure_policy *p,
 		} else if (!p->recovering) {
 			p->recovering = true;
 			p->recovery_ms = now;
-		} else if (now >= p->recovery_ms && now - p->recovery_ms >= 5000 &&
-			   now >= p->changed_ms && now - p->changed_ms >= 2000) {
+		} else if (now >= p->recovery_ms && now - p->recovery_ms >= 5000 && now >= p->changed_ms &&
+			   now - p->changed_ms >= 2000) {
 			p->state--;
 			p->changed_ms = now;
 			p->recovering = false;

@@ -35,18 +35,19 @@ MemorySample ReadMemory()
 		    SUCCEEDED(dxgi->GetAdapter(&adapter)) && SUCCEEDED(adapter.As(&adapter3)) &&
 		    SUCCEEDED(adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info)) &&
 		    info.Budget > 0) {
-			result = {info.CurrentUsage, info.Budget, info.AvailableForReservation,
-				  info.CurrentReservation, true};
+			result = {info.CurrentUsage, info.Budget, info.AvailableForReservation, info.CurrentReservation,
+				  true};
 		}
 	}
 	obs_leave_graphics();
 #endif
 	return result;
 }
-}
+} // namespace
 
 CornAdaptive::CornAdaptive(QObject *parent, std::function<obs_display_t *()> preview)
-	: QObject(parent), display(std::move(preview))
+	: QObject(parent),
+	  display(std::move(preview))
 {
 	enabled = corn_adaptive_enabled(qgetenv("CORNOBS_GPU_ADAPTIVE").constData());
 	blog(LOG_INFO, "CornOBS GPU adaptive: %s; telemetry=4Hz; display-only shedding",
@@ -79,17 +80,26 @@ void CornAdaptive::sample()
 	const uint64_t renderNs = obs_get_average_frame_time_ns();
 	const uint32_t frames = obs_get_total_frames(), lag = obs_get_lagged_frames();
 	double lagRatio = 0;
-	if (haveCounters && frames > previousFrames && lag >= previousLag)
+	if (haveCounters && frames > previousFrames && lag >= previousLag) {
 		lagRatio = double(lag - previousLag) / double(frames - previousFrames);
+	}
 	previousFrames = frames;
 	previousLag = lag;
 	haveCounters = true;
 	const auto before = policy.state;
 	const corn_pressure_sample input = {memory.valid ? double(memory.usage) / double(memory.budget) : 0,
-					   double(renderNs) / budgetNs, lagRatio, memory.valid, renderNs > 0};
+					    double(renderNs) / budgetNs, lagRatio, memory.valid, renderNs > 0};
 	corn_pressure_update(&policy, input, uint64_t(now));
 	const unsigned cap = corn_preview_fps(policy.state, enabled);
-	obs_display_set_max_fps(display(), cap);
+	obs_display_t *preview = display();
+	obs_display_set_max_fps(preview, cap);
+	const uint64_t previewFrames = obs_display_get_rendered_frames(preview);
+	const double previewFps =
+		previousPreviewMs && now > previousPreviewMs && previewFrames >= previousPreviewFrames
+			? double(previewFrames - previousPreviewFrames) * 1000.0 / double(now - previousPreviewMs)
+			: 0;
+	previousPreviewFrames = previewFrames;
+	previousPreviewMs = now;
 	meterInterval = corn_meter_interval(policy.state, enabled);
 	if (policy.state != before || now - lastLog >= 30000) {
 		static const char *names[] = {"NORMAL", "ELEVATED", "HIGH", "CRITICAL"};
@@ -97,12 +107,12 @@ void CornAdaptive::sample()
 		blog(LOG_INFO,
 		     "CornOBS GPU: state=%s adaptive=%s process_local_memory_valid=%d usage=%llu budget=%llu "
 		     "available_reservation=%llu reservation=%llu render_ms=%.3f rendering_lag=%u "
-		     "encoding_lag=%u preview_cap=%u meter_interval_ms=%u encode_host_call_peak_us=%u",
-		     names[policy.state], enabled ? "on" : "off", int(memory.valid),
-		     (unsigned long long)memory.usage, (unsigned long long)memory.budget,
-		     (unsigned long long)memory.available, (unsigned long long)memory.reservation,
-		     double(renderNs) / 1e6, lag, video ? video_output_get_skipped_frames(video) : 0,
-		     cap, meterInterval, submissionPeakUs);
+		     "encoding_lag=%u preview_cap=%u preview_fps=%.2f meter_interval_ms=%u encode_host_call_peak_us=%u",
+		     names[policy.state], enabled ? "on" : "off", int(memory.valid), (unsigned long long)memory.usage,
+		     (unsigned long long)memory.budget, (unsigned long long)memory.available,
+		     (unsigned long long)memory.reservation, double(renderNs) / 1e6, lag,
+		     video ? video_output_get_skipped_frames(video) : 0, cap, previewFps, meterInterval,
+		     submissionPeakUs);
 		submissionPeakUs = 0;
 		lastLog = now;
 	}

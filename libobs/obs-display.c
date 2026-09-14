@@ -18,6 +18,7 @@
 #include "graphics/vec4.h"
 #include "obs.h"
 #include "obs-internal.h"
+#include "util/display-timing.h"
 
 bool obs_display_init(struct obs_display *display, const struct gs_init_data *graphics_data)
 {
@@ -252,14 +253,11 @@ void render_display(struct obs_display *display)
 	uint64_t now = os_gettime_ns();
 	/* Skip the whole swapchain pass, not just its draw callback. Resizes and
 	 * color changes must still be serviced immediately. */
-	if (display->min_render_interval_ns && display->last_render_ns &&
-	    now >= display->last_render_ns &&
-	    now - display->last_render_ns < display->min_render_interval_ns &&
-	    cx == display->cx && cy == display->cy && !update_color_space) {
+	if (!obs_display_frame_due(now, display->min_render_interval_ns, &display->next_render_ns,
+				   cx != display->cx || cy != display->cy || update_color_space)) {
 		pthread_mutex_unlock(&display->draw_info_mutex);
 		return;
 	}
-	display->last_render_ns = now;
 
 	display->update_color_space = false;
 
@@ -286,6 +284,9 @@ void render_display(struct obs_display *display)
 		GS_DEBUG_MARKER_END();
 
 		gs_present();
+		pthread_mutex_lock(&display->draw_info_mutex);
+		display->rendered_frames++;
+		pthread_mutex_unlock(&display->draw_info_mutex);
 	}
 }
 
@@ -300,8 +301,22 @@ void obs_display_set_max_fps(obs_display_t *display, uint32_t fps)
 	if (!display)
 		return;
 	pthread_mutex_lock(&display->draw_info_mutex);
-	display->min_render_interval_ns = fps ? 1000000000ULL / fps : 0;
+	uint64_t interval = fps ? 1000000000ULL / fps : 0;
+	if (display->min_render_interval_ns != interval) {
+		display->min_render_interval_ns = interval;
+		display->next_render_ns = 0;
+	}
 	pthread_mutex_unlock(&display->draw_info_mutex);
+}
+
+uint64_t obs_display_get_rendered_frames(obs_display_t *display)
+{
+	if (!display)
+		return 0;
+	pthread_mutex_lock(&display->draw_info_mutex);
+	uint64_t frames = display->rendered_frames;
+	pthread_mutex_unlock(&display->draw_info_mutex);
+	return frames;
 }
 
 bool obs_display_enabled(obs_display_t *display)

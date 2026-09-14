@@ -24,15 +24,17 @@ static void test_hybrid(void)
 	struct scheduler_placement p = scheduler_select(cpus, 6, 123);
 	CHECK(p.valid && p.hybrid && p.efficiency == 8 && p.count == 4);
 	CHECK(p.local && p.llc == 0 && p.domains == 2);
-	for (size_t i = 0; i < 6; i++)
+	for (size_t i = 0; i < 6; i++) {
 		CHECK(scheduler_cpu_selected(&cpus[i], &p) == (i < 4));
+	}
 	/* Hybrid single LLC still prefers performance cores, but never CCD-pins. */
 	cpus[4].llc = cpus[5].llc = 0;
 	p = scheduler_select(cpus, 6, 123);
 	CHECK(p.valid && p.hybrid && !p.local && p.domains == 1 && p.count == 4);
 	/* All preferred cores reserved by another process: no narrow E-core policy. */
-	for (size_t i = 0; i < 4; i++)
+	for (size_t i = 0; i < 4; i++) {
 		cpus[i].available = false;
+	}
 	p = scheduler_select(cpus, 6, 123);
 	CHECK(!p.valid);
 }
@@ -44,8 +46,9 @@ static void test_multi_llc(void)
 	struct scheduler_cpu cpus[] = {cpu(10, 0, 0, 0, 0, 0), cpu(20, 0, 1, 1, 0, 0), cpu(30, 0, 2, 2, 1, 0),
 				       cpu(40, 0, 3, 3, 1, 0), cpu(50, 0, 4, 4, 1, 0), cpu(60, 0, 5, 5, 1, 0)};
 	struct scheduler_cpu reversed[6];
-	for (size_t i = 0; i < 6; i++)
+	for (size_t i = 0; i < 6; i++) {
 		reversed[i] = cpus[5 - i];
+	}
 	bool selected_small = false, selected_large = false;
 	for (uint32_t seed = 0; seed < 100; seed++) {
 		struct scheduler_placement p = scheduler_select(cpus, 6, seed);
@@ -56,8 +59,9 @@ static void test_multi_llc(void)
 		selected_small |= p.llc == 0;
 		selected_large |= p.llc == 1;
 		/* All frame roles use the same immutable process placement. */
-		for (int role = OS_THREAD_ROLE_AUDIO; role <= OS_THREAD_ROLE_GPU_ENCODE; role++)
+		for (int role = OS_THREAD_ROLE_AUDIO; role <= OS_THREAD_ROLE_GPU_ENCODE; role++) {
 			CHECK(scheduler_policy((enum os_thread_role)role).critical);
+		}
 	}
 	CHECK(selected_small && selected_large);
 }
@@ -109,12 +113,7 @@ static void test_unknown(void)
 
 static void test_roles_and_modes(void)
 {
-	CHECK(scheduler_auto_mode(NULL));
-	CHECK(scheduler_auto_mode("auto"));
-	CHECK(!scheduler_auto_mode("off"));
-	CHECK(!scheduler_auto_mode("ccd"));
-	CHECK(!scheduler_auto_mode(""));
-	CHECK(!scheduler_auto_mode("typo"));
+	CHECK(scheduler_parse_mode("typo") == SCHEDULER_OFF);
 	struct scheduler_role_policy audio = scheduler_policy(OS_THREAD_ROLE_AUDIO);
 	CHECK(audio.mmcss == SCHEDULER_MMCSS_AUDIO && audio.mmcss_priority == 0);
 	for (int role = OS_THREAD_ROLE_GRAPHICS; role <= OS_THREAD_ROLE_GPU_ENCODE; role++) {

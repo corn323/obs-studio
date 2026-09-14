@@ -17,11 +17,12 @@ struct corn_pressure_policy {
 	enum corn_pressure state;
 	double memory_ema, render_ema;
 	uint64_t changed_ms, recovery_ms;
+	uint64_t last_sample_ms;
 	bool initialized, recovering;
 };
 bool corn_adaptive_enabled(const char *value);
-enum corn_pressure corn_pressure_update(struct corn_pressure_policy *policy,
-				       struct corn_pressure_sample sample, uint64_t now_ms);
+enum corn_pressure corn_pressure_update(struct corn_pressure_policy *policy, struct corn_pressure_sample sample,
+					uint64_t now_ms);
 unsigned corn_preview_fps(enum corn_pressure state, bool enabled);
 unsigned corn_meter_interval(enum corn_pressure state, bool enabled);
 #ifdef __cplusplus

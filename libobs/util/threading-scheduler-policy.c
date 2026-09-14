@@ -4,16 +4,13 @@
 
 enum scheduler_mode scheduler_parse_mode(const char *mode)
 {
-	if (!mode || strcmp(mode, "mmcss") == 0)
+	if (!mode || strcmp(mode, "mmcss") == 0) {
 		return SCHEDULER_MMCSS;
-	if (strcmp(mode, "auto") == 0)
+	}
+	if (strcmp(mode, "auto") == 0) {
 		return SCHEDULER_AUTO;
+	}
 	return SCHEDULER_OFF;
-}
-
-bool scheduler_auto_mode(const char *mode)
-{
-	return !mode || strcmp(mode, "auto") == 0;
 }
 
 struct scheduler_role_policy scheduler_policy(enum os_thread_role role)
@@ -46,13 +43,16 @@ static size_t core_count(const struct scheduler_cpu *cpus, size_t count, const s
 {
 	size_t cores = 0;
 	for (size_t i = 0; i < count; i++) {
-		if (!scheduler_cpu_selected(&cpus[i], p))
+		if (!scheduler_cpu_selected(&cpus[i], p)) {
 			continue;
+		}
 		bool seen = false;
-		for (size_t j = 0; j < i; j++)
+		for (size_t j = 0; j < i; j++) {
 			if (scheduler_cpu_selected(&cpus[j], p) && cpus[j].group == cpus[i].group &&
-			    cpus[j].core == cpus[i].core)
+			    cpus[j].core == cpus[i].core) {
 				seen = true;
+			}
+		}
 		cores += !seen;
 	}
 	return cores;
@@ -73,8 +73,9 @@ static uint32_t domain_score(uint32_t key, uint32_t seed)
 struct scheduler_placement scheduler_select(const struct scheduler_cpu *cpus, size_t count, uint32_t seed)
 {
 	struct scheduler_placement p = {.reason = "unknown/empty topology"};
-	if (!cpus || !count)
+	if (!cpus || !count) {
 		return p;
+	}
 	uint8_t min_eff = UINT8_MAX;
 	for (size_t i = 0; i < count; i++) {
 		if (cpus[i].logical >= 64) {
@@ -88,8 +89,9 @@ struct scheduler_placement scheduler_select(const struct scheduler_cpu *cpus, si
 				p.reason = "duplicate CPU topology record";
 				return p;
 			}
-			if (cpus[j].group == cpus[i].group && cpus[j].llc == cpus[i].llc)
+			if (cpus[j].group == cpus[i].group && cpus[j].llc == cpus[i].llc) {
 				domain_seen = true;
+			}
 			if (cpus[j].group == cpus[i].group && cpus[j].core == cpus[i].core &&
 			    (cpus[j].llc != cpus[i].llc || cpus[j].efficiency != cpus[i].efficiency)) {
 				p.reason = "inconsistent core topology";
@@ -97,10 +99,12 @@ struct scheduler_placement scheduler_select(const struct scheduler_cpu *cpus, si
 			}
 		}
 		p.domains += !domain_seen;
-		if (cpus[i].efficiency < min_eff)
+		if (cpus[i].efficiency < min_eff) {
 			min_eff = cpus[i].efficiency;
-		if (cpus[i].efficiency > p.efficiency)
+		}
+		if (cpus[i].efficiency > p.efficiency) {
 			p.efficiency = cpus[i].efficiency;
+		}
 	}
 	p.hybrid = min_eff != p.efficiency;
 	p.valid = true;
@@ -115,17 +119,21 @@ struct scheduler_placement scheduler_select(const struct scheduler_cpu *cpus, si
 		uint32_t best_score = 0, best_key = 0;
 		for (size_t i = 0; i < count; i++) {
 			bool seen = false;
-			for (size_t j = 0; j < i; j++)
-				if (cpus[j].group == cpus[i].group && cpus[j].llc == cpus[i].llc)
+			for (size_t j = 0; j < i; j++) {
+				if (cpus[j].group == cpus[i].group && cpus[j].llc == cpus[i].llc) {
 					seen = true;
-			if (seen)
+				}
+			}
+			if (seen) {
 				continue;
+			}
 			struct scheduler_placement candidate = p;
 			candidate.local = true;
 			candidate.group = cpus[i].group;
 			candidate.llc = cpus[i].llc;
-			if (core_count(cpus, count, &candidate) < 2)
+			if (core_count(cpus, count, &candidate) < 2) {
 				continue;
+			}
 			uint32_t key = ((uint32_t)candidate.group << 8) | candidate.llc;
 			uint32_t score = domain_score(key, seed);
 			if (!found || score > best_score || (score == best_score && key < best_key)) {
@@ -138,8 +146,9 @@ struct scheduler_placement scheduler_select(const struct scheduler_cpu *cpus, si
 		}
 		p.local = found;
 	}
-	for (size_t i = 0; i < count; i++)
+	for (size_t i = 0; i < count; i++) {
 		p.count += scheduler_cpu_selected(&cpus[i], &p);
+	}
 	p.reason = p.local    ? "stable process-local LLC assignment"
 		   : p.hybrid ? "preferred efficiency class; no eligible LLC restriction"
 			      : "Windows default placement";

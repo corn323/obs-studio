@@ -134,13 +134,16 @@ static bool read_topology(void)
 		     (unsigned)cpus[i].core, (unsigned)cpus[i].llc, (unsigned)cpus[i].efficiency,
 		     cpus[i].available ? "yes" : "no");
 		bool seen = false;
-		for (size_t j = 0; j < i; j++)
+		for (size_t j = 0; j < i; j++) {
 			if (cpus[j].group == cpus[i].group && cpus[j].llc == cpus[i].llc &&
-			    cpus[j].efficiency == cpus[i].efficiency)
+			    cpus[j].efficiency == cpus[i].efficiency) {
 				seen = true;
-		if (!seen)
+			}
+		}
+		if (!seen) {
 			blog(LOG_INFO, "CornOBS scheduler: group=%u LLC=%u EfficiencyClass=%u", (unsigned)cpus[i].group,
 			     (unsigned)cpus[i].llc, (unsigned)cpus[i].efficiency);
+		}
 	}
 	if (scheduler_enabled && placement.valid && (placement.hybrid || placement.local)) {
 		selected_ids = malloc(placement.count * sizeof(*selected_ids));
@@ -151,8 +154,9 @@ static bool read_topology(void)
 		}
 		size_t selected = 0;
 		for (size_t i = 0; i < count; i++) {
-			if (!scheduler_cpu_selected(&cpus[i], &placement))
+			if (!scheduler_cpu_selected(&cpus[i], &placement)) {
 				continue;
+			}
 			selected_ids[selected++] = cpus[i].id;
 			blog(LOG_INFO, "CornOBS scheduler: selected CPU_set=%lu group=%u LLC=%u",
 			     (unsigned long)cpus[i].id, (unsigned)cpus[i].group, (unsigned)cpus[i].llc);
@@ -172,12 +176,16 @@ static BOOL CALLBACK scheduler_init(PINIT_ONCE once, PVOID param, PVOID *context
 	SetLastError(ERROR_SUCCESS);
 	DWORD length = GetEnvironmentVariableA("CORNOBS_SCHED", mode, sizeof(mode));
 	bool unset = !length && GetLastError() == ERROR_ENVVAR_NOT_FOUND;
-	enum scheduler_mode parsed = unset ? scheduler_parse_mode(NULL)
-		: length && length < sizeof(mode) ? scheduler_parse_mode(mode) : SCHEDULER_OFF;
+	enum scheduler_mode parsed = unset                             ? scheduler_parse_mode(NULL)
+				     : length && length < sizeof(mode) ? scheduler_parse_mode(mode)
+								       : SCHEDULER_OFF;
 	scheduler_enabled = parsed != SCHEDULER_OFF;
 	placement_enabled = parsed == SCHEDULER_AUTO;
 	init_failure = scheduler_enabled ? NULL : "mode off or unsupported (use off/mmcss/auto; ccd retired)";
-	blog(LOG_INFO, "CornOBS scheduler: mode=%s%s", placement_enabled ? "auto" : scheduler_enabled ? "mmcss" : "off",
+	blog(LOG_INFO, "CornOBS scheduler: mode=%s%s",
+	     placement_enabled   ? "auto"
+	     : scheduler_enabled ? "mmcss"
+				 : "off",
 	     unset ? " (default)" : "");
 	HMODULE kernel = GetModuleHandleW(L"kernel32.dll");
 #define LOAD_API(module, member, type, name) \
@@ -190,9 +198,10 @@ static BOOL CALLBACK scheduler_init(PINIT_ONCE once, PVOID param, PVOID *context
 	if (!scheduler_enabled) {
 		/* Off still reports topology for A/B logs, but loads no MMCSS module
 		 * and makes no scheduling mutations. */
-		if (!api.topology || !read_topology())
+		if (!api.topology || !read_topology()) {
 			blog(LOG_INFO,
 			     "CornOBS scheduler: logical_processors/LLC/EfficiencyClass unavailable in off mode");
+		}
 		init_failure = "mode off or unsupported (use off/auto; ccd retired)";
 		blog(LOG_INFO, "CornOBS scheduler: Windows defaults; %s", init_failure);
 		return TRUE;
@@ -212,13 +221,15 @@ static BOOL CALLBACK scheduler_init(PINIT_ONCE once, PVOID param, PVOID *context
 #undef LOAD_API
 	/* Module and immutable topology intentionally live as long as libobs/process.
 	 * MMCSS thread registrations, unlike the module, are always reverted. */
-	if ((placement_enabled && (!api.topology || !api.select || !api.selected || !api.process_selected)) || !api.power || !api.priority ||
-	    !api.mmcss || !api.mmcss_priority || !api.revert)
+	if ((placement_enabled && (!api.topology || !api.select || !api.selected || !api.process_selected)) ||
+	    !api.power || !api.priority || !api.mmcss || !api.mmcss_priority || !api.revert) {
 		init_failure = "required Windows scheduling API unavailable";
-	else if (placement_enabled)
+	} else if (placement_enabled) {
 		read_topology();
-	if (init_failure)
+	}
+	if (init_failure) {
 		blog(LOG_WARNING, "CornOBS scheduler: fallback=%s; Windows defaults", init_failure);
+	}
 	return TRUE;
 }
 
@@ -226,31 +237,35 @@ static bool scheduler_restore(struct os_thread_scheduler *state)
 {
 	HANDLE thread = GetCurrentThread();
 	if (state->mmcss) {
-		if (api.revert(state->mmcss))
+		if (api.revert(state->mmcss)) {
 			state->mmcss = NULL;
-		else
+		} else {
 			log_error(state->role, "AvRevertMmThreadCharacteristics rollback failed");
+		}
 	}
 	if (state->power_changed) {
 		/* These are fresh OBS-owned threads. ControlMask=0 returns power policy
 		 * to Windows, rather than explicitly enabling throttling. */
 		THREAD_POWER_THROTTLING_STATE power = {.Version = THREAD_POWER_THROTTLING_CURRENT_VERSION};
-		if (api.power(thread, ThreadPowerThrottling, &power, sizeof(power)))
+		if (api.power(thread, ThreadPowerThrottling, &power, sizeof(power))) {
 			state->power_changed = false;
-		else
+		} else {
 			log_error(state->role, "SetThreadInformation rollback failed");
+		}
 	}
 	if (state->priority_changed) {
-		if (api.priority(thread, state->original_priority))
+		if (api.priority(thread, state->original_priority)) {
 			state->priority_changed = false;
-		else
+		} else {
 			log_error(state->role, "SetThreadPriority rollback failed");
+		}
 	}
 	if (state->cpu_changed) {
-		if (api.select(thread, NULL, 0))
+		if (api.select(thread, NULL, 0)) {
 			state->cpu_changed = false;
-		else
+		} else {
 			log_error(state->role, "SetThreadSelectedCpuSets rollback failed");
+		}
 	}
 	return !state->mmcss && !state->power_changed && !state->priority_changed && !state->cpu_changed;
 }
@@ -272,20 +287,22 @@ struct os_thread_scheduler *os_thread_scheduler_begin(enum os_thread_role role)
 	HANDLE thread = GetCurrentThread();
 	ULONG previous_count = 0;
 	if (placement_enabled) {
-	if (!api.selected(thread, NULL, 0, &previous_count) || previous_count) {
-		log_error(policy.name, "existing thread CPU sets or GetThreadSelectedCpuSets failure; left unchanged");
-		return NULL;
-	}
-	if (!api.process_selected(GetCurrentProcess(), NULL, 0, &previous_count) || previous_count) {
-		log_error(policy.name, "existing process CPU sets or GetProcessDefaultCpuSets failure; left unchanged");
-		return NULL;
-	}
-	DWORD_PTR process_mask = 0, system_mask = 0;
-	if (!GetProcessAffinityMask(GetCurrentProcess(), &process_mask, &system_mask) || !process_mask ||
-	    process_mask != system_mask) {
-		log_error(policy.name, "restricted/unknown process affinity; left unchanged");
-		return NULL;
-	}
+		if (!api.selected(thread, NULL, 0, &previous_count) || previous_count) {
+			log_error(policy.name,
+				  "existing thread CPU sets or GetThreadSelectedCpuSets failure; left unchanged");
+			return NULL;
+		}
+		if (!api.process_selected(GetCurrentProcess(), NULL, 0, &previous_count) || previous_count) {
+			log_error(policy.name,
+				  "existing process CPU sets or GetProcessDefaultCpuSets failure; left unchanged");
+			return NULL;
+		}
+		DWORD_PTR process_mask = 0, system_mask = 0;
+		if (!GetProcessAffinityMask(GetCurrentProcess(), &process_mask, &system_mask) || !process_mask ||
+		    process_mask != system_mask) {
+			log_error(policy.name, "restricted/unknown process affinity; left unchanged");
+			return NULL;
+		}
 	}
 	struct os_thread_scheduler *state = calloc(1, sizeof(*state));
 	if (!state) {
@@ -296,33 +313,39 @@ struct os_thread_scheduler *os_thread_scheduler_begin(enum os_thread_role role)
 	state->role = policy.name;
 	state->original_priority = GetThreadPriority(thread);
 	const char *failure = "GetThreadPriority";
-	if (state->original_priority == THREAD_PRIORITY_ERROR_RETURN)
+	if (state->original_priority == THREAD_PRIORITY_ERROR_RETURN) {
 		goto fail;
+	}
 	if (selected_ids) {
 		failure = "SetThreadSelectedCpuSets";
-		if (!api.select(thread, selected_ids, (ULONG)placement.count))
+		if (!api.select(thread, selected_ids, (ULONG)placement.count)) {
 			goto fail;
+		}
 		state->cpu_changed = true;
 	}
 	/* MMCSS owns dynamic priority; do not stack a HIGHEST base boost on it. */
 	failure = "SetThreadPriority";
-	if (!api.priority(thread, THREAD_PRIORITY_NORMAL))
+	if (!api.priority(thread, THREAD_PRIORITY_NORMAL)) {
 		goto fail;
+	}
 	state->priority_changed = true;
 	DWORD task_index = 0;
 	failure = "AvSetMmThreadCharacteristicsW";
 	state->mmcss = api.mmcss(policy.mmcss == SCHEDULER_MMCSS_AUDIO ? L"Audio" : L"Playback", &task_index);
-	if (!state->mmcss)
+	if (!state->mmcss) {
 		goto fail;
+	}
 	failure = "AvSetMmThreadPriority";
-	if (!api.mmcss_priority(state->mmcss, policy.mmcss_priority == 0 ? AVRT_PRIORITY_NORMAL : AVRT_PRIORITY_LOW))
+	if (!api.mmcss_priority(state->mmcss, policy.mmcss_priority == 0 ? AVRT_PRIORITY_NORMAL : AVRT_PRIORITY_LOW)) {
 		goto fail;
+	}
 	THREAD_POWER_THROTTLING_STATE power = {.Version = THREAD_POWER_THROTTLING_CURRENT_VERSION,
 					       .ControlMask = THREAD_POWER_THROTTLING_EXECUTION_SPEED,
 					       .StateMask = 0};
 	failure = "SetThreadInformation";
-	if (!api.power(thread, ThreadPowerThrottling, &power, sizeof(power)))
+	if (!api.power(thread, ThreadPowerThrottling, &power, sizeof(power))) {
 		goto fail;
+	}
 	state->power_changed = true;
 	blog(LOG_INFO,
 	     "CornOBS scheduler: role=%s MMCSS=%s/%s priority=NORMAL CPU_sets=%s count=%zu "
@@ -330,7 +353,8 @@ struct os_thread_scheduler *os_thread_scheduler_begin(enum os_thread_role role)
 	     policy.name, policy.mmcss == SCHEDULER_MMCSS_AUDIO ? "Audio" : "Playback",
 	     policy.mmcss_priority == 0 ? "NORMAL" : "LOW", selected_ids ? "selected" : "Windows-default",
 	     selected_ids ? placement.count : 0, placement.local ? "selected" : "unrestricted",
-	     (unsigned)placement.group, (unsigned)placement.llc, placement.reason);
+	     (unsigned)placement.group, (unsigned)placement.llc,
+	     placement.reason ? placement.reason : "MMCSS only; Windows CPU placement");
 	return state;
 
 fail:
@@ -351,8 +375,9 @@ fail:
 
 void os_thread_scheduler_end(struct os_thread_scheduler *state)
 {
-	if (!state)
+	if (!state) {
 		return;
+	}
 	if (state->owner != GetCurrentThreadId()) {
 		blog(LOG_ERROR, "CornOBS scheduler: role=%s cleanup must run on owning thread", state->role);
 		return;

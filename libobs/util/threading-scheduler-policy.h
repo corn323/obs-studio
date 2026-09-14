@@ -40,7 +40,6 @@ struct scheduler_role_policy {
 	int mmcss_priority;
 };
 
-bool scheduler_auto_mode(const char *mode);
 struct scheduler_role_policy scheduler_policy(enum os_thread_role role);
 struct scheduler_placement scheduler_select(const struct scheduler_cpu *cpus, size_t count, uint32_t seed);
 bool scheduler_cpu_selected(const struct scheduler_cpu *cpu, const struct scheduler_placement *placement);

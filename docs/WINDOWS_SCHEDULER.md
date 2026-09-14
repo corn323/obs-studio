@@ -7,7 +7,7 @@ There is no per-frame polling, reassignment, or scheduler logging.
 
 ## Modes
 
-`CORNOBS_SCHED=auto` is the default when the variable is absent.
+`CORNOBS_SCHED=mmcss` is the default when the variable is absent. It applies MMCSS and power policy without querying or assigning CPU placement. Explicit `CORNOBS_SCHED=auto` enables the CPU Sets candidate described below; hardware benefit is unproven.
 `CORNOBS_SCHED=off` makes no CornOBS scheduling changes, including priority,
 MMCSS, power throttling, or CPU set assignments. Read-only topology information
 is still logged for comparison. Restart OBS after changing the variable.
@@ -112,7 +112,7 @@ another cleanup attempt at thread exit. No failure aborts OBS startup or crashes
 the process. The begin/end API is for fresh OBS-owned threads and must not be
 nested or used as a temporary override on an externally managed worker.
 
-Initialization logs mode, processor count, efficiency classes, LLC domains, seed,
+Auto initialization logs mode, processor count, efficiency classes, LLC domains, seed,
 and selected CPU set IDs. Per-thread logs record role, task/relative priority,
 base priority, CPU set count and LLC choice, power policy, and fallback reason.
 Individual processor/core mapping is additionally available at debug log level.
@@ -123,7 +123,7 @@ The standalone tests require only a C11 compiler; they do not link libobs, Qt,
 FFmpeg, or a testing framework. Checks remain active in Release builds.
 
 ```powershell
-cmake -S test/scheduler -B build_scheduler_tests -G 'Visual Studio 17 2022' -A x64
+cmake -S test/scheduler -B build_scheduler_tests -G 'Visual Studio 18 2026' -A x64
 cmake --build build_scheduler_tests --config Release
 ctest --test-dir build_scheduler_tests -C Release --output-on-failure
 ```

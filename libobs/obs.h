@@ -917,6 +917,7 @@ EXPORT uint32_t obs_take_gpu_encode_submission_peak_us(void);
 
 /** Optional display-only cap. Zero restores the compositor's cadence. */
 EXPORT void obs_display_set_max_fps(obs_display_t *display, uint32_t fps);
+EXPORT uint64_t obs_display_get_rendered_frames(obs_display_t *display);
 
 OBS_DEPRECATED EXPORT bool obs_nv12_tex_active(void);
 OBS_DEPRECATED EXPORT bool obs_p010_tex_active(void);

@@ -15,6 +15,8 @@ class CornAdaptive : public QObject {
 	bool haveCounters = false;
 	bool enabled = false;
 	uint32_t submissionPeakUs = 0;
+	uint64_t previousPreviewFrames = 0;
+	qint64 previousPreviewMs = 0;
 	void sample();
 
 public:

@@ -25,8 +25,9 @@ static AVRT_PRIORITY last_mmcss_priority;
 
 void blog(int level, const char *format, ...)
 {
-	if (level <= LOG_WARNING)
+	if (level <= LOG_WARNING) {
 		warnings++;
+	}
 	if (verbose) {
 		va_list args;
 		va_start(args, format);
@@ -68,13 +69,15 @@ static BOOL WINAPI fake_select(HANDLE thread, const ULONG *ids, ULONG count)
 	if (!ids) {
 		CHECK(count == 0);
 		restore_calls++;
-		if (!rollback_failure)
+		if (!rollback_failure) {
 			cpu_active = false;
+		}
 		return !rollback_failure;
 	}
 	CHECK(count == placement.count);
-	if (fail_apply())
+	if (fail_apply()) {
 		return FALSE;
+	}
 	cpu_active = true;
 	return TRUE;
 }
@@ -85,13 +88,15 @@ static BOOL WINAPI fake_priority(HANDLE thread, int value)
 	if (priority_active) {
 		restore_calls++;
 		CHECK(value == GetThreadPriority(thread));
-		if (!rollback_failure)
+		if (!rollback_failure) {
 			priority_active = false;
+		}
 		return !rollback_failure;
 	}
 	CHECK(value == THREAD_PRIORITY_NORMAL);
-	if (fail_apply())
+	if (fail_apply()) {
 		return FALSE;
+	}
 	priority_active = true;
 	return TRUE;
 }
@@ -102,8 +107,9 @@ static HANDLE WINAPI fake_mmcss(LPCWSTR name, LPDWORD index)
 	saw_audio = wcscmp(name, L"Audio") == 0;
 	saw_playback = wcscmp(name, L"Playback") == 0;
 	CHECK(saw_audio || saw_playback);
-	if (fail_apply())
+	if (fail_apply()) {
 		return NULL;
+	}
 	mmcss_active = true;
 	return (HANDLE)(uintptr_t)123;
 }
@@ -119,8 +125,9 @@ static BOOL WINAPI fake_revert(HANDLE handle)
 {
 	CHECK(handle == (HANDLE)(uintptr_t)123 && mmcss_active);
 	restore_calls++;
-	if (!rollback_failure)
+	if (!rollback_failure) {
 		mmcss_active = false;
+	}
 	return !rollback_failure;
 }
 
@@ -132,13 +139,15 @@ static BOOL WINAPI fake_power(HANDLE thread, THREAD_INFORMATION_CLASS type, LPVO
 	CHECK(power->Version == THREAD_POWER_THROTTLING_CURRENT_VERSION && power->StateMask == 0);
 	if (power->ControlMask == 0) {
 		restore_calls++;
-		if (!rollback_failure)
+		if (!rollback_failure) {
 			power_active = false;
+		}
 		return !rollback_failure;
 	}
 	CHECK(power->ControlMask == THREAD_POWER_THROTTLING_EXECUTION_SPEED);
-	if (fail_apply())
+	if (fail_apply()) {
 		return FALSE;
+	}
 	power_active = true;
 	return TRUE;
 }
@@ -159,23 +168,31 @@ static BOOL WINAPI fake_topology(PSYSTEM_CPU_SET_INFORMATION buffer, ULONG bytes
 		return FALSE;
 	}
 	CHECK(bytes == sizeof(topology_records));
-	if (topology_failure == 2)
+	if (topology_failure == 2) {
 		return FALSE;
+	}
 	memcpy(buffer, topology_records, bytes);
-	if (topology_failure == 3)
+	if (topology_failure == 3) {
 		buffer->Size = 0;
-	if (topology_failure == 4)
+	}
+	if (topology_failure == 4) {
 		buffer->Size = bytes + 1;
-	if (topology_failure == 5)
+	}
+	if (topology_failure == 5) {
 		buffer->Size = offsetof(SYSTEM_CPU_SET_INFORMATION, CpuSet);
-	if (topology_failure == 6)
+	}
+	if (topology_failure == 6) {
 		*returned = bytes - 1;
-	if (topology_failure == 7)
+	}
+	if (topology_failure == 7) {
 		*returned = bytes + 1;
-	if (topology_failure == 8)
+	}
+	if (topology_failure == 8) {
 		*returned = 0;
-	if (topology_failure == 9)
+	}
+	if (topology_failure == 9) {
 		buffer->Size++;
+	}
 	return TRUE;
 }
 
@@ -300,8 +317,9 @@ static void test_topology(void)
 		CHECK(!os_thread_scheduler_begin(OS_THREAD_ROLE_AUDIO) && apply_calls == 0);
 	}
 	reset();
-	for (size_t i = 0; i < 4; i++)
+	for (size_t i = 0; i < 4; i++) {
 		topology_records[i].CpuSet.LastLevelCacheIndex = 0;
+	}
 	CHECK(read_topology());
 	CHECK(!placement.local && !selected_ids);
 	struct os_thread_scheduler *state = os_thread_scheduler_begin(OS_THREAD_ROLE_AUDIO);
@@ -317,8 +335,9 @@ static void test_topology(void)
 	CHECK(placement.hybrid && placement.count == 2 && placement.efficiency == 9);
 	CHECK(selected_ids[0] == 100 && selected_ids[1] == 110);
 	reset();
-	for (size_t i = 0; i < 4; i++)
+	for (size_t i = 0; i < 4; i++) {
 		topology_records[i].CpuSet.Allocated = 1;
+	}
 	CHECK(!read_topology());
 	reset();
 	for (size_t i = 0; i < 4; i++) {

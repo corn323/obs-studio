@@ -290,7 +290,8 @@ extern void obs_view_free(struct obs_view *view);
 struct obs_display {
 	/* Protected by draw_info_mutex; never changes compositor/output timing. */
 	uint64_t min_render_interval_ns;
-	uint64_t last_render_ns;
+	uint64_t next_render_ns;
+	uint64_t rendered_frames;
 	bool update_color_space;
 	bool enabled;
 	uint32_t cx, cy;
