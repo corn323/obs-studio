@@ -17,6 +17,7 @@
 ******************************************************************************/
 
 #include "ThumbnailManager.hpp"
+#include "CornAdaptive.hpp"
 
 #include <utility/ThumbnailView.hpp>
 #include <widgets/OBSBasic.hpp>
@@ -144,6 +145,7 @@ void ThumbnailManager::obsSourceRemoved(void *data, calldata_t *params)
 
 void ThumbnailManager::updateTickInterval(int newInterval)
 {
+	newInterval = int(corn_thumbnail_interval(unsigned(newInterval), CornAdaptive::ShedThumbnails()));
 	if (updateTimer.interval() != newInterval) {
 		elapsedTimer.restart();
 		updateTimer.start(newInterval);
@@ -197,6 +199,12 @@ void ThumbnailManager::updateNextItem(size_t cycleDepth)
 
 void ThumbnailManager::updateTick()
 {
+	if (CornAdaptive::ShedThumbnails()) {
+		if (elapsedTimer.elapsed() < corn_thumbnail_interval(kMinimumThumbnailUpdateInterval, true)) {
+			return;
+		}
+		elapsedTimer.restart();
+	}
 	updateNextItem();
 }
 
@@ -226,7 +234,9 @@ void ThumbnailManager::addToPriorityQueue(const std::string &uuid, bool immediat
 		priorityQueue.emplace_front(uuid);
 
 		qint64 elapsed = elapsedTimer.elapsed();
-		if (elapsed > kMinimumThumbnailUpdateInterval) {
+		const int minimum =
+			int(corn_thumbnail_interval(kMinimumThumbnailUpdateInterval, CornAdaptive::ShedThumbnails()));
+		if (elapsed > minimum) {
 			updateTick();
 		}
 	} else {

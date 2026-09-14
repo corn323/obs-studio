@@ -3,10 +3,56 @@
 #include <math.h>
 #include <string.h>
 
+enum corn_mode corn_mode_parse(const char *value)
+{
+	if (value && !strcmp(value, "gaming")) {
+		return CORN_GAMING;
+	}
+	if (value && !strcmp(value, "balanced")) {
+		return CORN_BALANCED;
+	}
+	return CORN_COMPATIBILITY;
+}
+
+enum corn_mode corn_mode_override(enum corn_mode configured, const char *override)
+{
+	if (!override) {
+		return configured;
+	}
+	return !strcmp(override, "on") ? CORN_BALANCED : corn_mode_parse(override);
+}
+
+const char *corn_scheduler_mode(enum corn_mode mode)
+{
+	return mode == CORN_BALANCED || mode == CORN_GAMING ? "mmcss" : "off";
+}
+
+unsigned corn_mode_preview_fps(enum corn_pressure state, enum corn_mode mode, bool streaming)
+{
+	static const unsigned gaming_fps[] = {15, 10, 8, 5};
+	if (mode == CORN_GAMING && streaming && state >= CORN_NORMAL && state <= CORN_CRITICAL) {
+		return gaming_fps[state];
+	}
+	return corn_preview_fps(state, mode == CORN_BALANCED);
+}
+
+unsigned corn_mode_meter_interval(enum corn_pressure state, enum corn_mode mode, bool streaming)
+{
+	if (mode == CORN_GAMING && streaming) {
+		return state >= CORN_HIGH ? 200 : 100;
+	}
+	return mode == CORN_BALANCED ? corn_meter_interval(state, true) : 16;
+}
+
 bool corn_adaptive_enabled(const char *value)
 {
 	/* Opt in until hardware A/B acceptance. Unknown values fail open. */
 	return value && (!strcmp(value, "on") || !strcmp(value, "balanced"));
+}
+
+unsigned corn_thumbnail_interval(unsigned requested_ms, bool shedding)
+{
+	return shedding && requested_ms < 500 ? 500 : requested_ms;
 }
 
 enum corn_pressure corn_pressure_update(struct corn_pressure_policy *p, struct corn_pressure_sample s, uint64_t now)
@@ -19,8 +65,9 @@ enum corn_pressure corn_pressure_update(struct corn_pressure_policy *p, struct c
 	}
 	const double weight = p->initialized ? 0.25 : 1.0;
 	/* A stalled GUI timer is not evidence of continuous recovery. */
-	if (p->initialized && (now < p->last_sample_ms || now - p->last_sample_ms > 1000))
+	if (p->initialized && (now < p->last_sample_ms || now - p->last_sample_ms > 1000)) {
 		p->recovering = false;
+	}
 	p->last_sample_ms = now;
 	p->memory_ema = s.memory_valid ? p->memory_ema + weight * (s.memory_ratio - p->memory_ema) : 0;
 	p->render_ema = s.render_valid ? p->render_ema + weight * (s.render_ratio - p->render_ema) : 0;

@@ -213,6 +213,7 @@ private:
 	QString lastCustomServer;
 	int prevLangIndex;
 	bool prevBrowserAccel;
+	QString prevCornMode;
 
 	void ServiceChanged(bool resetFields = false);
 	QString FindProtocol();

@@ -42,6 +42,7 @@
 #include <qt-wrappers.hpp>
 
 #include <QCompleter>
+#include <QSignalBlocker>
 #include <QStandardItemModel>
 
 #include <sstream>
@@ -569,6 +570,7 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->reconnectRetryDelay,  SCROLL_CHANGED, ADV_CHANGED);
 	HookWidget(ui->reconnectMaxRetries,  SCROLL_CHANGED, ADV_CHANGED);
 	HookWidget(ui->processPriority,      COMBO_CHANGED,  ADV_CHANGED);
+	HookWidget(ui->cornPerformanceMode,  COMBO_CHANGED,  ADV_RESTART);
 	HookWidget(ui->confirmOnExit,        CHECK_CHANGED,  ADV_CHANGED);
 	HookWidget(ui->bindToIP,             COMBO_CHANGED,  ADV_CHANGED);
 	HookWidget(ui->ipFamily,             COMBO_CHANGED,  ADV_CHANGED);
@@ -2589,6 +2591,16 @@ void OBSBasicSettings::UpdateColorFormatSpaceWarning()
 
 void OBSBasicSettings::LoadAdvancedSettings()
 {
+	QSignalBlocker cornModeBlocker(ui->cornPerformanceMode);
+	if (ui->cornPerformanceMode->count() == 0) {
+		ui->cornPerformanceMode->addItem(QTStr("CornOBS.Mode.Compatibility"), "compatibility");
+		ui->cornPerformanceMode->addItem(QTStr("CornOBS.Mode.Balanced"), "balanced");
+		ui->cornPerformanceMode->addItem(QTStr("CornOBS.Mode.Gaming"), "gaming");
+	}
+	prevCornMode = config_get_string(App()->GetAppConfig(), "CornOBS", "PerformanceMode");
+	if (!SetComboByValue(ui->cornPerformanceMode, prevCornMode)) {
+		ui->cornPerformanceMode->setCurrentIndex(0);
+	}
 	const char *videoColorFormat = config_get_string(main->Config(), "Video", "ColorFormat");
 	const char *videoColorSpace = config_get_string(main->Config(), "Video", "ColorSpace");
 	const char *videoColorRange = config_get_string(main->Config(), "Video", "ColorRange");
@@ -3267,6 +3279,8 @@ void OBSBasicSettings::SaveVideoSettings()
 
 void OBSBasicSettings::SaveAdvancedSettings()
 {
+	config_set_string(App()->GetAppConfig(), "CornOBS", "PerformanceMode",
+			  QT_TO_UTF8(ui->cornPerformanceMode->currentData().toString()));
 	QString lastMonitoringDevice = config_get_string(main->Config(), "Audio", "MonitoringDeviceId");
 
 #if defined(_WIN32) || (defined(__APPLE__) && defined(__aarch64__))
@@ -3843,7 +3857,8 @@ void OBSBasicSettings::SaveSettings()
 		(ui->channelSetup->currentIndex() != channelIndex || ui->sampleRate->currentIndex() != sampleRateIndex);
 	bool browserHWAccelChanged = (ui->browserHWAccel && ui->browserHWAccel->isChecked() != prevBrowserAccel);
 
-	if (langChanged || audioRestart || browserHWAccelChanged) {
+	if (langChanged || audioRestart || browserHWAccelChanged ||
+	    ui->cornPerformanceMode->currentData().toString() != prevCornMode) {
 		restart = true;
 	} else {
 		restart = false;

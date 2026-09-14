@@ -6,6 +6,13 @@
 extern "C" {
 #endif
 enum corn_pressure { CORN_NORMAL, CORN_ELEVATED, CORN_HIGH, CORN_CRITICAL };
+enum corn_mode { CORN_COMPATIBILITY, CORN_BALANCED, CORN_GAMING };
+enum corn_mode corn_mode_parse(const char *value);
+enum corn_mode corn_mode_override(enum corn_mode configured, const char *override);
+const char *corn_scheduler_mode(enum corn_mode mode);
+unsigned corn_mode_preview_fps(enum corn_pressure state, enum corn_mode mode, bool streaming);
+unsigned corn_mode_meter_interval(enum corn_pressure state, enum corn_mode mode, bool streaming);
+unsigned corn_thumbnail_interval(unsigned requested_ms, bool shedding);
 struct corn_pressure_sample {
 	double memory_ratio;
 	double render_ratio;

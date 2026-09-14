@@ -34,6 +34,12 @@ static struct scheduler_api api;
 static INIT_ONCE scheduler_once = INIT_ONCE_STATIC_INIT;
 static bool scheduler_enabled;
 static bool placement_enabled;
+static enum scheduler_mode default_mode = SCHEDULER_MMCSS;
+
+void os_thread_scheduler_set_default(const char *mode)
+{
+	default_mode = scheduler_parse_mode(mode);
+}
 static struct scheduler_placement placement;
 static ULONG *selected_ids;
 static const char *init_failure = "not initialized";
@@ -176,7 +182,7 @@ static BOOL CALLBACK scheduler_init(PINIT_ONCE once, PVOID param, PVOID *context
 	SetLastError(ERROR_SUCCESS);
 	DWORD length = GetEnvironmentVariableA("CORNOBS_SCHED", mode, sizeof(mode));
 	bool unset = !length && GetLastError() == ERROR_ENVVAR_NOT_FOUND;
-	enum scheduler_mode parsed = unset                             ? scheduler_parse_mode(NULL)
+	enum scheduler_mode parsed = unset                             ? default_mode
 				     : length && length < sizeof(mode) ? scheduler_parse_mode(mode)
 								       : SCHEDULER_OFF;
 	scheduler_enabled = parsed != SCHEDULER_OFF;

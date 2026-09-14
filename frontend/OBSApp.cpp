@@ -16,6 +16,8 @@
 ******************************************************************************/
 
 #include "OBSApp.hpp"
+#include <utility/CornPressure.h>
+#include <util/threading-scheduler.h>
 
 #include <components/Multiview.hpp>
 #include <dialogs/LogUploadDialog.hpp>
@@ -297,6 +299,7 @@ std::array<int, 2> OBSApp::sigQuitFileDescriptor{0, 0};
 
 bool OBSApp::InitGlobalConfigDefaults()
 {
+	config_set_default_string(appConfig, "CornOBS", "PerformanceMode", "balanced");
 	config_set_default_uint(appConfig, "General", "MaxLogs", 10);
 	config_set_default_int(appConfig, "General", "InfoIncrement", -1);
 	config_set_default_string(appConfig, "General", "ProcessPriority", "Normal");
@@ -1172,6 +1175,8 @@ const char *OBSApp::GetRenderModule() const
 
 static bool StartupOBS(const char *locale, profiler_name_store_t *store)
 {
+	os_thread_scheduler_set_default(corn_scheduler_mode(
+		corn_mode_parse(config_get_string(App()->GetAppConfig(), "CornOBS", "PerformanceMode"))));
 	char path[512];
 
 	if (GetAppConfigPath(path, sizeof(path), "obs-studio/plugin_config") <= 0) {

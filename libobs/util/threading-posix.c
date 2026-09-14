@@ -322,14 +322,15 @@ int os_set_thread_priority(enum os_thread_priority priority)
 #endif
 }
 
+void os_thread_scheduler_set_default(const char *mode)
+{
+	UNUSED_PARAMETER(mode);
+}
+
 struct os_thread_scheduler *os_thread_scheduler_begin(enum os_thread_role role)
 {
-	/* Preserve existing non-Windows behavior; topology policy is Windows-only. */
-	if (role == OS_THREAD_ROLE_AUDIO)
-		os_set_thread_priority(OS_THREAD_PRIORITY_HIGH);
-	else if (role == OS_THREAD_ROLE_GRAPHICS || role == OS_THREAD_ROLE_VIDEO_IO ||
-		 role == OS_THREAD_ROLE_GPU_ENCODE)
-		os_set_thread_priority(OS_THREAD_PRIORITY_ABOVE_NORMAL);
+	/* Upstream does not raise these POSIX thread priorities. */
+	UNUSED_PARAMETER(role);
 	return NULL;
 }
 

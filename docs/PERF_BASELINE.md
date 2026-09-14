@@ -1,81 +1,70 @@
-# CornOBS 效能基準與驗收
+# CornOBS 多硬體效能基準與驗收
 
-**尚無本版本的硬體 A/B 結果。** Unit test、CI build 成功與人工驗收是不同狀態。不能以 CPU 3.1% → 2.9% 宣稱成功，也不能用遊戲程序 CPU 使用量推論遊戲流暢度。
+**目前四組硬體都沒有本變更的實測結果。Gaming Stream 待驗收，不能宣稱保護遊戲或輸出已成功。** 基準固定為官方 **OBS 32.2.2 release**，不能用舊 CornOBS 或只用本地 source build 替代。
 
-## 固定工作負載
+## 客戶硬體矩陣
 
-建議平台：Ryzen 9 9900X、RTX 3070 8GB、2560x1440 遊戲、60 FPS stream、NVENC。完整記錄實際 CPU/GPU、VRAM、Windows、driver、HAGS、Game Mode、電源模式、顯示器 refresh rate、遊戲版本与 FPS cap。
+| Profile | CPU / RAM | GPU / 顯示器 | 工作負載與目標 | 必測 |
+|---|---|---|---|---|
+| A | Ryzen 7 9800X3D / 32 GB DDR5 | RX 9070 XT / 3840×2160 160 Hz | 遊戲 + OBS + Discord；無 VTS；1080p60 stream | AMD Hardware H.264 與 AV1 分開測；single-CCD 無預設 placement；高 GPU 負載只犧牲本地畫面 |
+| B | Ryzen 7 9800X3D / 64 GB DDR5 | RTX 5070 Ti / 3840×2160 160 Hz | 遊戲 + OBS + Discord；無 VTS；偶發 congestion；1080p60 | NVENC、4K 遊戲 GPU 負載；沿用官方 Dynamic Bitrate/TCP pacing/network optimizations |
+| C | Ryzen 9 9900X / 64 GB DDR5 | RTX 3070 / 2560×1440 | 遊戲 60 FPS + VTS 60 FPS/Spout2 + OBS + Discord；偶發 congestion；1080p60 | mmcss 正式預設；auto/LLC placement 僅獨立實驗；avatar source 不降頻 |
+| D | i7-14700K / 64 GB DDR4 | RTX 4060 Ti / 1920×1080 240 Hz | VALORANT/FPS 遊戲 **240 FPS** + VTS 60 FPS/Spout2 + OBS + Discord；1080p60 | 1% low / p99 優先；不綁 P-core；mmcss；UI visual refresh 可降但操作必須流暢 |
 
-固定遊戲內 benchmark／replay／路線、畫質、OBS scene collection、canvas/output 解析度、縮放、encoder preset/bitrate/lookahead、VTube Studio model/追蹤輸入、chat/alert browser、Discord 與 Chrome 工作負載。輸出解析度可為 1080p60 或 1440p60，但整組比較必須相同。先 warm up 5 分鐘以完成 shader/cache 初始化。
+A/B 的遊戲不限，但每次比較必須是同一個可重播場景、相同版本與設定；不能把不同遊戲的結果混成平均。沒有 VTS 的 A/B 不啟動 VTS，確認不存在 VTuber 專用成本。A 的 AV1 只使用支援 AV1 的服務或接收端，與 H.264 各自比較；其他設定保持一致。
 
-使用獨立 portable 目錄及複製的場景，先確認沒有第二個 OBS 搶同一份設定。不要把含串流金鑰或 OAuth 的設定檔、完整設定 dump 上傳到 benchmark report。
+## 每個 Profile 的四組 build/mode
 
-## Matrix
+為免與硬體 Profile 混淆，下表稱 Run A–D。
 
-每一列都分成「GPU 有餘裕」與「由固定遊戲畫質/負载形成的 GPU 95–100%」兩組。不要用 CornOBS 的 process-local VRAM ratio 代替 GPU utilization。
-
-| Build | Scheduler | GPU Adaptive | 用途 |
+| Run | Build / 模式 | Preview | Scheduler |
 |---|---|---|---|
-| Stock OBS 32.2.2 | upstream | upstream | 官方基準 |
-| CornOBS 同一個 binary | off | off | fork 本身差異 |
-| CornOBS 同一個 binary | mmcss（預設） | off | MMCSS/power 成本與收益 |
-| CornOBS 同一個 binary | auto | off | CPU Sets / LLC 是否值得 |
-| CornOBS 同一個 binary | off | balanced | 獨立比較 GPU shedding |
-| CornOBS 同一個 binary | mmcss | balanced | 建議候選組合 |
-| CornOBS 同一個 binary | auto | balanced | 交互作用；非必要預設 |
+| A | Official OBS 32.2.2 / Administrator | Disabled | 官方原有行為 |
+| B | CornOBS Compatibility / Administrator | Enabled，補測 Disabled 對齊 baseline | off（保留官方 Audio MMCSS） |
+| C | CornOBS Balanced / Administrator | Enabled | mmcss，無 CPU Sets |
+| D | CornOBS Gaming Stream / Administrator | Enabled，直播應為 15/10/8/5 FPS | mmcss，無 CPU Sets |
 
-每組至少 3 次、每次同一段 10 分鐘；交錯 A/B/B/A 次序，避免熱、cache 或遊戲伺服器順序偏差。候選通過後再做至少 1 小時直播/錄影 soak。環境變數啟動時讀取，每一列完全退出後重新開啟 OBS。
+全部輸出真正 1920×1080 @ 60 FPS。C/D 使用 VTS 的硬體維持 VTS 60 FPS + Spout2；A/B 硬體無 VTS。固定 encoder、bitrate、keyframe、Lookahead、preset、scene collection、Browser Sources/alerts、Discord 工作負載。
 
-```powershell
-$env:CORNOBS_SCHED = 'off'          # mmcss / auto
-$env:CORNOBS_GPU_ADAPTIVE = 'off'  # balanced
-& 'D:\CornOBS-test\bin\64bit\obs64.exe' --portable
-```
+**GPU priority confound：** 官方 CI 提供私有 `GPU_PRIORITY_VAL`；本 CornOBS CI 不提供，clean build 顯示 `CornOBS GPU priority: unavailable`。Administrator 不會彌補未編譯 path。記錄每個 artifact commit、hash、build status/log；`available` 只表示編譯進去，不代表 Windows API 成功。此限制不能省略，也不能以未知 magic number 解決。
 
-上方路徑是範例，換成該次 artifact 解壓路徑。每次記錄 binary SHA256、commit、build config、環境開關與 UTC 起訖。Stock 與 CornOBS 使用同版本 base；不要拿舊 32.1.2 的歷史數字當這輪對照。
+## 執行手順
 
-## 同步蒐集
+1. 備份設定，使用獨立 portable 測試目錄與複製場景。關閉其他 OBS instance；不要上傳含串流金鑰、OAuth 或 WebSocket 密碼的設定。清除兩個 CornOBS debug overrides，透過 GUI 切 mode、儲存並重啟，再確認 log。
+2. 記錄 Windows build、driver、BIOS/CPU 設定、HAGS、Game Mode、Game DVR、電源模式、RAM、VRAM 容量、螢幕 refresh rate、遊戲版本與 cap、OBS/plugin 版本與 encoder。所有 Run 維持相同外部設定；不改遊戲 affinity/priority、timer resolution 或 registry。
+3. 固定 replay/內建 benchmark/可重現路線，warm up 5 分鐘。每個 Run 至少 **3 次**固定 10 分鐘收集區間，輪替順序避免溫度與 cache 偏差。原始 frame-time trace 與 OBS counter 起訖時間必須對齊；完成後再跑至少 1 小時 continuity soak。
+4. 分別測「有 GPU headroom」與「實際遊戲高 GPU 負載」。使用相同場景與固定畫質/cap，不拿 process-local VRAM ratio 代替 GPU utilization。Profile D 240 FPS + 60 FPS stream 是必要 workload；C 維持 60 FPS 遊戲目標。
+5. 使用 PresentMon 或同類 frame trace 收集**遊戲 process**的有效 present 間隔；工具版本與欄位定義固定。排除 warmup，報 average FPS、1% low、p95/p99 frametime、>33.3 ms spike count。定義 1% low 為最慢 1% frame intervals 平均值的倒數；若工具定義不同，明列定義，不能混用。
+6. OBS 記錄 render missed/total 與 encode skipped/total 起訖差，百分比以該段 denominator 算；同時記實際輸出 FPS、平均 render time、output frame/packet counters、dropped network frames、reconnect、congestion。Counter reset/device restart 必須分段，不能得到負差仍算成功。WebSocket active FPS 僅為內部指標，另用接收端錄影/PTS/畫面 frame counter 核對真正 60 FPS，避免只檢查標頭 60 FPS 或重複畫面。
+7. 系統記 CPU、各 GPU engine utilization、VRAM、OBS Working Set；GPU engine busy 與 VRAM budget 分欄。CornOBS encode host call peak 是 CPU 呼叫時間，不是 GPU execution time。可用既有 `tools/cornobs/collect-runtime.ps1` 輔助收集它支援的欄位；缺遊戲 frametime/接收端指標時必須另補，不能以腳本 summary 代替全部驗收。
+8. 接收端聽音與觀察畫面：audio crackle、A/V drift（起終點 clap/同步標記）、freeze、avatar update、網路掉幀與 reconnect。包含直播 + 錄影同時進行；輸出與來源更新必須維持 60 FPS。記錄關閉 preview、最小化、還原、停止/重新開始直播前後的行為。
+9. B/C 在穩定網路與可重現的受限頻寬接收端各跑同一矩陣；保留同一組官方 Dynamic Bitrate/TCP pacing/Network Optimizations 設定。把 congestion/network drops 與 render/encoder lag 分開報告，網路 drops 不得算 GPU/scheduler pressure，也不能宣稱 UI shedding 修復網路。
 
-1. **遊戲**：用同版 [PresentMon](https://github.com/GameTechDev/PresentMon/blob/main/README-CaptureApplication.md) 鎖定遊戲 PID 與主要 swapchain，匯出每幀資料。固定 CPU frame time 或 display frame time 定義，不能跨版本任意混用欄位。記錄 Average FPS、1% low、p95/p99 frametime、超過 33.3/50 ms 的 spike 次數。
-2. **OBS**：Stats 的 render frame time、render missed、encode skipped、network dropped、FPS；記錄開始/結束計數器，用差值除以該區間 total frames。重置／重開時切開樣本，不把累積值混為區間值。
-3. **CornOBS log**：只擷取 `CornOBS GPU:` 與 `CornOBS scheduler:` 診斷行，記錄狀態停留時間、preview_fps/cap、process-local VRAM/Budget、render_ms 與 encode_host_call_peak_us。Log 為 30 秒／狀態改變取樣，不能拿它計算逐幀 p99 或完整狀態時間線。
-4. **CPU / RAM**：用附帶 `tools/cornobs/collect-runtime.ps1` 指定 OBS、遊戲 PID，每秒收集 CPU（單核心 100%）及 Working Set。除以 logical processor 數才是 Task Manager 風格的整機百分比。RAM 取 start/peak/end 與每小時成長。
-5. **GPU**：用同一套硬體監控／PresentMon GPU telemetry 记录整卡 utilization、整卡 VRAM 與 clock/temperature。與 OBS 自己的 DXGI 預算分列。來源不支援的欄位寫 N/A，不填 0。
-6. **Output**：錄製同一段測試輸出（先確認 storage 足夠），播放檢查 freezes、重複 frame、audio crackle、A/V drift。實际串流以測試目的地/私人環境驗證 network continuity；本地錄影無法證明網路穩定。
+## GUI 與 failure 驗收
 
-```powershell
-powershell -ExecutionPolicy Bypass -File tools/cornobs/collect-runtime.ps1 `
-  -ObsProcessId 1234 -GameProcessId 5678 -DurationSeconds 600 `
-  -OutputPath 'D:\bench\cornobs-mmcss-adaptive.csv'
-```
+- 三個模式儲存/重啟持久化；取消不生效；未知 config 值安全 fallback。Debug override 的有效值在 log 可核對。無 override 的預設為 Balanced/mmcss。
+- Compatibility 保留官方 Audio MMCSS、正常 meter 頻率、無 preview cap；不套 CPU placement。對照官方時仍揭露 GPU/OAuth/updater/fresh-profile 預設差異。
+- Gaming 直播在 NORMAL 即約 15 FPS preview；四個 policy state 的單元測試驗證 15/10/8/5。沒有可重現 HIGH/CRITICAL 實機事件時，不宣稱已測到。
+- 手動 disable preview 不被重新啟用；minimize 不 render/present 主 preview；還原沿用使用者選擇。停止直播恢復正常 preview/meter，來源、compositor、錄影不停頓。
+- 重複 hotkey、menu、scene switch、Start/Stop、source properties、drag/drop、Studio mode、隱藏/顯示 docks。記錄操作 latency 與 freeze；可用螢幕錄影對齊輸入。**低 preview FPS 不等於允許操作卡死。** 縮圖低頻時來源 properties 與 output 仍正常。
+- Telemetry 無效、DXGI 無 budget、API 失敗與既有 CPU constraints 的單元測試/實機條件分別記錄。不要為測試而修改遊戲或系統權限。
 
-PID 與輸出位置是範例。工具不讀 OBS 設定、不取得 WebSocket 密碼。既有本機 `perf-capture.ps1` 若仍使用，需另外確認其欄位有效性；它不是本版本必要依賴。不要僅靠 parser 成功就宣稱 collector 的 WebSocket 或實際直播已驗證。
+## 記錄模板
 
-明確定義 1% low：本報告建議 `1000 / 最慢 1% frame-time 的平均毫秒`，另列 p99 frame time；它與單純 `1000/p99` 不相同。先排除 warmup、loading 與其他 swapchain，任何排除規則 A/B 一致。
+每次 run 一行；A 的 H.264/AV1 分別建表，B/C 的 network cases 分開。
 
-## 行為驗收
+| Profile / Run / repetition | Commit / GPU priority compiled+runtime | Game avg / 1% low | p95 / p99 ms / >33.3ms count | render missed/total (%) | encode skipped/total (%) | actual receiver FPS | CPU/GPU/VRAM/Working Set | audio / drift / freeze / network drops | GUI |
+|---|---|---|---|---|---|---|---|---|---|
+| 待測 | | | | | | | | | |
 
-- GPU adaptive off/on 切換後確認 log；NORMAL 主 preview 跟隨實際 OBS cadence，高壓出現 30/15/8 cap，串流設定仍為 60 FPS。
-- 同時錄製 preview 螢幕與 stream output 以檢查「preview 卡，但 output 沒有跟著跳幀」。僅 policy test 不足以證明實際 D3D11 行為。
-- 壓力下降後觀察分級恢復，不應 HIGH/NORMAL 快速抖動。
-- 切場景、resize preview、Studio Mode、最小化/還原、顯示/隱藏 mixer、開 properties、停開錄影、切換 video 設定與退出，檢查 crash、deadlock、resource leak。
-- 驗證 VTube Studio 在實際輸出維持更新；不要誤把 preview 節流當作來源節流。
-- Chat WebSocket、donate/follow alert、timer、browser audio 與登入保持可用。第一版沒有 browser 節流。
-- 無 adapter3、memory query 失敗／budget=0：應繼續 OBS，用有效 render 資料判斷；無全部資料則不節流。硬體失敗案例可用不支援 backend 驗證，單元測試只驗證決策 fallback。
-- Scheduler off/mmcss/auto 比較；auto 若沒有明顯收益或遊戲 1% low 退步，不推薦開啟。
+每個 Profile 報三次各別數據與跨 run 變異，不只報平均值；提前定義有意義的改善門檻，必須超過同 workload 的 run-to-run noise。沒有數據就寫未驗證。
 
-## 成功條件與報告
+## 正式推薦與停止條件
 
-先用 Stock 的 3 次重複量測估計噪聲。候選必須在遊戲 1% low / frametime spikes、rendering/encoding lag、audio 與 stream continuity 均無可重複退步，同時至少有一项有意義的改善。只改善平均 FPS 或 CPU 不足以通過。音訊 glitch、hang、leak、場景切換 stutter 是否決項；不能用平均值掩蓋。
+1. 四個 Profile 都沒有可重複的遊戲效能退步，輸出真正 1080p60，無新增 audio crackle/A/V drift/freeze/encoder instability。
+2. AMD H.264/AV1 與 NVIDIA NVENC、Intel Hybrid/AMD Single-CCD/AMD Multi-CCD 都有結果。不得只靠一台 Intel/NVIDIA 成功推薦全部客戶。
+3. `auto` 獨立做三次以上實驗；只有同時改善 Game 1% low、p99 frametime、OBS rendering lag 才考慮該硬體 opt-in。雙 CCD 不代表更快，不能做全域預設。
+4. 若某項只改善一台卻使其他機器退步，移除或改成有證據的 hardware-specific opt-in。mmcss 保持保守正式排程；Gaming Stream 全域推薦仍待四組驗收。
+5. 若正確設定 Administrator、Preview Disabled、hardware encoder、必要時 VTS 60/Spout2 與合理 game cap 後，官方已穩定且 CornOBS 沒有可重複有意義的收益，該 Profile 結論寫：**「此目標硬體不需要 CornOBS，建議使用官方 OBS。」** 不再堆 optimizer。
 
-| 日期 / commit / binary hash | GPU 情境 | Mode | 次數 / 時長 | Game avg / 1% low | p99 ms / spikes | Render ms / missed % | Encode skipped % / host peak | VRAM usage / budget / board | CPU / WS start-peak-end | Network drops / A/V continuity | 結論 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| 待硬體量測 | | | | | | | | | | | 未驗收 |
-
-## 進一步 GPU profile
-
-以同一 workload 做 PIX/GPUView trace：Game Capture copy/resolve、compositor、color conversion、NVENC CopyResource、keyed mutex wait、staging Map，以及 texture allocation 次數。將時間區段與 game frametime spikes 對齊後才提出 copy/pool 修改。不要只因看到 CopyResource 就認定可刪。
-
-## 已完成的自動驗證
-
-邏輯 tests 包含 scheduler role/CPU topology/API failure/rollback、mmcss 無 CPU API、config parser、pressure 門檻、EMA recovery/hysteresis、無效資料 fallback、preview cap 與 60 Hz jitter 下的節奏。Windows 完整 Release build 結果以交付 commit 的 CI 為準。這些不代表硬體效能或直播驗收。
+目前結論：四個 Profile 全部未驗證，沒有足夠證據證明 CornOBS 值得作正式效能推薦，也沒有證據斷言官方已足夠。只完成軟體工作不能回答硬體收益問題。

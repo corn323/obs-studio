@@ -349,6 +349,14 @@ static void test_topology(void)
 
 int main(int argc, char **argv)
 {
+	os_thread_scheduler_set_default("off");
+	CHECK(default_mode == SCHEDULER_OFF);
+	os_thread_scheduler_set_default("auto");
+	CHECK(default_mode == SCHEDULER_AUTO);
+	os_thread_scheduler_set_default("invalid");
+	CHECK(default_mode == SCHEDULER_OFF);
+	os_thread_scheduler_set_default("mmcss");
+	CHECK(default_mode == SCHEDULER_MMCSS);
 	/* Optional smoke run exercises only this disposable helper's own thread. */
 	if (argc == 2 && strcmp(argv[1], "--live") == 0) {
 		verbose = true;

@@ -333,23 +333,22 @@ VolumeMeter::VolumeMeter(QWidget *parent, obs_source_t *source)
 	if (!updateTimer) {
 		updateTimer = new QTimer(qApp);
 		updateTimer->setTimerType(Qt::PreciseTimer);
-		/* CornOBS: 30 Hz instead of 60 Hz. A level meter reads the same to
-		 * the eye at 30 Hz (peak-hold is measured in seconds), and this
-		 * halves the repaint work, which adds up with several audio
-		 * tracks / meters on screen. */
-		updateTimer->start(33);
+		/* Only visual refresh changes; audio sampling and peak callbacks remain intact. */
+		updateTimer->start(int(CornAdaptive::MeterInterval()));
 		connect(updateTimer, &QTimer::timeout, updateTimer, [] {
 			const int interval = int(CornAdaptive::MeterInterval());
-			if (updateTimer->interval() != interval)
+			if (updateTimer->interval() != interval) {
 				updateTimer->setInterval(interval);
+			}
 		});
 	}
 
 	connect(updateTimer, &QTimer::timeout, this, [this]() {
 		/* Don't queue repaints for a meter the user can't see (dock
 		 * hidden, tabbed behind another, window minimised). */
-		if (!isVisible())
+		if (!isVisible() || window()->isMinimized()) {
 			return;
+		}
 
 		if (needLayoutChange()) {
 			doLayout();

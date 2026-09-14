@@ -1332,7 +1332,8 @@ void OBSBasic::OBSInit()
 	}
 
 	OBSBasicStats::InitializeValues();
-	cornAdaptive = new CornAdaptive(this, [this] { return ui->preview->GetDisplay(); });
+	cornAdaptive = new CornAdaptive(
+		this, [this] { return ui->preview->GetDisplay(); }, [this] { return StreamingActive(); });
 
 	/* ----------------------- */
 	/* Add multiview menu      */

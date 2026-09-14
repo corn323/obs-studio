@@ -1,13 +1,13 @@
 # CornOBS Windows thread scheduler
 
-The Windows scheduler is applied once at entry to OBS's audio, graphics,
+The Windows scheduler is applied once at entry to OBS's graphics,
 video-IO, and GPU-encode threads. Those call sites supply only a role and retain
 an opaque cleanup handle, which they release on the same thread before exit.
 There is no per-frame polling, reassignment, or scheduler logging.
 
 ## Modes
 
-`CORNOBS_SCHED=mmcss` is the default when the variable is absent. It applies MMCSS and power policy without querying or assigning CPU placement. Explicit `CORNOBS_SCHED=auto` enables the CPU Sets candidate described below; hardware benefit is unproven.
+Settings → Advanced → CornOBS selects the startup default: Balanced (default) and Gaming Stream use `mmcss`; Compatibility uses `off`. Changes require restart. `CORNOBS_SCHED` is a debugging override. MMCSS mode applies policy without querying or assigning CPU placement. Explicit `CORNOBS_SCHED=auto` enables the CPU Sets candidate described below; hardware benefit is unproven across Intel Hybrid, AMD single-CCD and AMD multi-CCD.
 `CORNOBS_SCHED=off` makes no CornOBS scheduling changes, including priority,
 MMCSS, power throttling, or CPU set assignments. Read-only topology information
 is still logged for comparison. Restart OBS after changing the variable.
@@ -36,7 +36,7 @@ timer-resolution changes, CPU-model tables, or additional runtime dependencies.
 
 | Role | MMCSS task | Relative MMCSS priority | Base thread priority | Execution-speed throttling | Placement |
 | --- | --- | --- | --- | --- | --- |
-| AUDIO | Audio | Normal | Normal | Disabled | Shared critical pool |
+| AUDIO (upstream audio-io, not CornOBS role hook) | Audio | Upstream default | Unchanged | Upstream default | Windows default |
 | GRAPHICS | Playback | Low | Normal | Disabled | Shared critical pool |
 | VIDEO_IO | Playback | Low | Normal | Disabled | Shared critical pool |
 | GPU_ENCODE | Playback | Low | Normal | Disabled | Shared critical pool |
@@ -44,9 +44,7 @@ timer-resolution changes, CPU-model tables, or additional runtime dependencies.
 | BACKGROUND | None | Unchanged | Unchanged | Windows default | Windows default |
 
 Network and background roles are available to callers without touching the RTMP
-implementation in this change. The four media entry points no longer call the
-old priority/MMCSS/affinity helpers. Audio's duplicate MMCSS registration is
-removed. A single `Audio` registration is now owned and reverted explicitly.
+implementation in this change. Audio uses the exact upstream `audio-io.c` registration/revert in every mode, including Compatibility/off. The AUDIO role remains available in the scheduler API/tests but is no longer used by audio-io. This removes duplication and restores the upstream audio behavior that off previously lost.
 
 MMCSS owns dynamic priority; the scheduler does not stack `HIGHEST` on top of
 it and does not request `Pro Audio`, real-time process priority, or time-critical

@@ -4,10 +4,45 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #define CHECK(c) do { if (!(c)) { fprintf(stderr, "line %d: %s\n", __LINE__, #c); exit(1); } } while (0)
 
 int main(void)
 {
+	CHECK(corn_thumbnail_interval(100, false) == 100);
+	CHECK(corn_thumbnail_interval(100, true) == 500);
+	CHECK(corn_thumbnail_interval(500, true) == 500);
+	CHECK(corn_thumbnail_interval(5000, true) == 5000);
+	CHECK(corn_mode_parse(NULL) == CORN_COMPATIBILITY);
+	CHECK(corn_mode_parse("typo") == CORN_COMPATIBILITY);
+	CHECK(corn_mode_parse("balanced") == CORN_BALANCED);
+	CHECK(corn_mode_parse("gaming") == CORN_GAMING);
+	CHECK(corn_mode_override(CORN_GAMING, NULL) == CORN_GAMING);
+	CHECK(corn_mode_override(CORN_GAMING, "off") == CORN_COMPATIBILITY);
+	CHECK(corn_mode_override(CORN_GAMING, "typo") == CORN_COMPATIBILITY);
+	CHECK(corn_mode_override(CORN_COMPATIBILITY, "on") == CORN_BALANCED);
+	CHECK(corn_mode_override(CORN_COMPATIBILITY, "gaming") == CORN_GAMING);
+	CHECK(!strcmp(corn_scheduler_mode(CORN_COMPATIBILITY), "off"));
+	CHECK(!strcmp(corn_scheduler_mode(CORN_BALANCED), "mmcss"));
+	CHECK(!strcmp(corn_scheduler_mode(CORN_GAMING), "mmcss"));
+	const unsigned caps[] = {15, 10, 8, 5};
+	for (int state = CORN_NORMAL; state <= CORN_CRITICAL; state++) {
+		enum corn_pressure s = (enum corn_pressure)state;
+		CHECK(corn_mode_preview_fps(s, CORN_COMPATIBILITY, true) == 0);
+		CHECK(corn_mode_meter_interval(s, CORN_COMPATIBILITY, true) == 16);
+		CHECK(corn_mode_preview_fps(s, CORN_GAMING, true) == caps[state]);
+		CHECK(corn_mode_meter_interval(s, CORN_GAMING, true) == (state >= CORN_HIGH ? 200U : 100U));
+		CHECK(corn_mode_preview_fps(s, CORN_GAMING, false) == 0);
+		CHECK(corn_mode_meter_interval(s, CORN_GAMING, false) == 16);
+		CHECK(corn_mode_preview_fps(s, CORN_BALANCED, true) == corn_preview_fps(s, true));
+		/* A 60 Hz compositor still receives all 600 ticks; only display draws change. */
+		uint64_t next = 0;
+		unsigned draws = 0;
+		for (unsigned tick = 0; tick < 600; tick++)
+			draws += obs_display_frame_due(1000000000ULL + tick * 16666667ULL,
+						      1000000000ULL / caps[state], &next, false);
+		CHECK(draws >= caps[state] * 10 - 1 && draws <= caps[state] * 10 + 1);
+	}
 	/* Ten seconds of 60 Hz compositor ticks with +/-100 us timing jitter.
 	 * The display policy must retain its average cap and never alter ticks. */
 	uint64_t next = 0;

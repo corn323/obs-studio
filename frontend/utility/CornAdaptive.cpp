@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 #include "CornAdaptive.hpp"
+#include <OBSApp.hpp>
 #include <QTimer>
 #include <util/platform.h>
 #include <utility>
@@ -11,7 +12,8 @@
 #endif
 
 namespace {
-unsigned meterInterval = 33; // GUI thread only, including VolumeMeter timer callbacks.
+unsigned meterInterval = 16; // GUI thread only, including VolumeMeter timer callbacks.
+bool shedThumbnails = false; // GUI thread only; no source tick or output control.
 struct MemorySample {
 	uint64_t usage = 0, budget = 0, available = 0, reservation = 0;
 	bool valid = false;
@@ -45,17 +47,31 @@ MemorySample ReadMemory()
 }
 } // namespace
 
-CornAdaptive::CornAdaptive(QObject *parent, std::function<obs_display_t *()> preview)
+CornAdaptive::CornAdaptive(QObject *parent, std::function<obs_display_t *()> preview, std::function<bool()> active)
 	: QObject(parent),
-	  display(std::move(preview))
+	  display(std::move(preview)),
+	  streaming(std::move(active))
 {
-	enabled = corn_adaptive_enabled(qgetenv("CORNOBS_GPU_ADAPTIVE").constData());
-	blog(LOG_INFO, "CornOBS GPU adaptive: %s; telemetry=4Hz; display-only shedding",
-	     enabled ? "balanced" : "off (set CORNOBS_GPU_ADAPTIVE=balanced to opt in)");
+	mode = corn_mode_parse(config_get_string(App()->GetAppConfig(), "CornOBS", "PerformanceMode"));
+	const QByteArray override = qgetenv("CORNOBS_GPU_ADAPTIVE");
+	mode = corn_mode_override(mode,
+				  qEnvironmentVariableIsSet("CORNOBS_GPU_ADAPTIVE") ? override.constData() : nullptr);
+	const char *modeName = mode == CORN_GAMING ? "gaming" : mode == CORN_BALANCED ? "balanced" : "compatibility";
+	blog(LOG_INFO, "CornOBS GPU adaptive: mode=%s; display-only shedding; debug_override=%s", modeName,
+	     qEnvironmentVariableIsSet("CORNOBS_GPU_ADAPTIVE") ? "yes" : "no");
+	if (mode == CORN_COMPATIBILITY) {
+		return;
+	}
 	clock.start();
 	auto *timer = new QTimer(this);
 	connect(timer, &QTimer::timeout, this, [this] { sample(); });
 	timer->start(250);
+	sample();
+}
+
+bool CornAdaptive::ShedThumbnails()
+{
+	return shedThumbnails;
 }
 
 unsigned CornAdaptive::MeterInterval()
@@ -65,12 +81,21 @@ unsigned CornAdaptive::MeterInterval()
 
 void CornAdaptive::sample()
 {
+	const bool active = streaming();
+	shedThumbnails = mode == CORN_GAMING && active;
+	if (mode == CORN_COMPATIBILITY || (mode == CORN_GAMING && !active)) {
+		policy = {};
+		haveCounters = false;
+		meterInterval = 16;
+		obs_display_set_max_fps(display(), 0);
+		return;
+	}
 	struct obs_video_info info = {};
 	if (!obs_get_video_info(&info) || !info.fps_num || !info.fps_den) {
 		policy = {};
 		haveCounters = false;
-		meterInterval = 33;
-		obs_display_set_max_fps(display(), 0);
+		meterInterval = corn_mode_meter_interval(CORN_NORMAL, mode, active);
+		obs_display_set_max_fps(display(), corn_mode_preview_fps(CORN_NORMAL, mode, active));
 		return;
 	}
 	const MemorySample memory = ReadMemory();
@@ -90,7 +115,7 @@ void CornAdaptive::sample()
 	const corn_pressure_sample input = {memory.valid ? double(memory.usage) / double(memory.budget) : 0,
 					    double(renderNs) / budgetNs, lagRatio, memory.valid, renderNs > 0};
 	corn_pressure_update(&policy, input, uint64_t(now));
-	const unsigned cap = corn_preview_fps(policy.state, enabled);
+	const unsigned cap = corn_mode_preview_fps(policy.state, mode, active);
 	obs_display_t *preview = display();
 	obs_display_set_max_fps(preview, cap);
 	const uint64_t previewFrames = obs_display_get_rendered_frames(preview);
@@ -100,7 +125,7 @@ void CornAdaptive::sample()
 			: 0;
 	previousPreviewFrames = previewFrames;
 	previousPreviewMs = now;
-	meterInterval = corn_meter_interval(policy.state, enabled);
+	meterInterval = corn_mode_meter_interval(policy.state, mode, active);
 	if (policy.state != before || now - lastLog >= 30000) {
 		static const char *names[] = {"NORMAL", "ELEVATED", "HIGH", "CRITICAL"};
 		video_t *video = obs_get_video();
@@ -108,11 +133,11 @@ void CornAdaptive::sample()
 		     "CornOBS GPU: state=%s adaptive=%s process_local_memory_valid=%d usage=%llu budget=%llu "
 		     "available_reservation=%llu reservation=%llu render_ms=%.3f rendering_lag=%u "
 		     "encoding_lag=%u preview_cap=%u preview_fps=%.2f meter_interval_ms=%u encode_host_call_peak_us=%u",
-		     names[policy.state], enabled ? "on" : "off", int(memory.valid), (unsigned long long)memory.usage,
-		     (unsigned long long)memory.budget, (unsigned long long)memory.available,
-		     (unsigned long long)memory.reservation, double(renderNs) / 1e6, lag,
-		     video ? video_output_get_skipped_frames(video) : 0, cap, previewFps, meterInterval,
-		     submissionPeakUs);
+		     names[policy.state], mode == CORN_GAMING ? "gaming" : "balanced", int(memory.valid),
+		     (unsigned long long)memory.usage, (unsigned long long)memory.budget,
+		     (unsigned long long)memory.available, (unsigned long long)memory.reservation,
+		     double(renderNs) / 1e6, lag, video ? video_output_get_skipped_frames(video) : 0, cap, previewFps,
+		     meterInterval, submissionPeakUs);
 		submissionPeakUs = 0;
 		lastLog = now;
 	}

@@ -19,11 +19,15 @@ enum os_thread_role {
 
 struct os_thread_scheduler;
 
+/* Startup thread only, before starting any media threads. Immutable afterwards.
+ * CORNOBS_SCHED remains an explicit debugging override. Changes require restart. */
+EXPORT void os_thread_scheduler_set_default(const char *mode);
+
 /* Call once at thread entry, and end on the SAME thread before returning.
  * NULL is a valid inactive/fallback handle. A non-NULL handle can also retain
  * cleanup after incomplete rollback; it is not a success indicator.
  * Only the calling thread is changed.
- * Windows reads CORNOBS_SCHED once: unset/auto enables policy, off disables it.
+ * Windows reads CORNOBS_SCHED once, falling back to the startup default.
  * Other platforms retain their existing media thread priority behavior. */
 EXPORT struct os_thread_scheduler *os_thread_scheduler_begin(enum os_thread_role role);
 EXPORT void os_thread_scheduler_end(struct os_thread_scheduler *state);

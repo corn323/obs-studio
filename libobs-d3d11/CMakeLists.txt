@@ -23,6 +23,11 @@ target_sources(
 )
 
 configure_file(cmake/windows/obs-module.rc.in libobs-d3d11.rc)
+if(GPU_PRIORITY_VAL)
+  message(STATUS "CornOBS GPU priority: available")
+else()
+  message(STATUS "CornOBS GPU priority: unavailable")
+endif()
 target_sources(libobs-d3d11 PRIVATE libobs-d3d11.rc)
 
 target_compile_definitions(

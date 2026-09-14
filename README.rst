@@ -1,62 +1,64 @@
 CornOBS
 =======
 
-.. image:: https://github.com/corn323/obs-studio/actions/workflows/cornobs.yaml/badge.svg?branch=cornobs
-   :alt: CornOBS Windows Release build
-   :target: https://github.com/corn323/obs-studio/actions/workflows/cornobs.yaml?query=branch%3Acornobs
+CornOBS 的目標是：**在單機遊戲直播中，優先保護遊戲 frametime 與真正直播輸出，允許 OBS 本地 Preview / Meter / UI visual refresh 降級。**
 
-**針對單機遊戲直播最佳化的 OBS：遊戲順 + 實際直播順，優先於預覽與 UI 順。**
+基底為 OBS Studio **32.2.2**，與 OBS Project 無隸屬關係。正式分支 ``cornobs``，開發整合 ``cornobs-dev``。
+目前沒有四組目標硬體的 A/B 結果，不能宣稱效能提升或正式推薦 Gaming Stream。
 
-CornOBS 是 OBS Studio 的個人 fork，與 OBS Project 無隸屬關係。
-基底為 **OBS 32.2.2**。正式版本在 ``cornobs``；``cornobs-dev`` 僅供開發整合。
+Gaming Stream Performance Mode
+------------------------------
 
-面向遊戲、VTube Studio、Browser Sources 與 NVENC 同時運作的場景。
-硬體資源不足時，先降低 OBS 自己非必要的顯示工作；不修改 VTube Studio 或遊戲程序。
-目前沒有硬體 A/B 結果，沒有 FPS 增益宣稱。
+Settings → Advanced → CornOBS，儲存後重新啟動：
 
-目前功能
---------
+- **Compatibility**：CornOBS scheduler / adaptive shedding 關閉，保留 upstream Audio MMCSS 與正常 preview/meter cadence。
+- **Balanced（預設）**：保守 ``mmcss``，無 CPU placement；保留既有壓力式 preview/meter 節流。
+- **Gaming Stream（待驗收）**：``mmcss``，直播時主 preview 約 15 / 10 / 8 / 5 FPS，meter 約 10 / 5 Hz，降低本地縮圖 priority refresh；停止直播恢復。
 
-- Windows role scheduler：Audio / Playback MMCSS、power policy 與 rollback。
-  預設 ``CORNOBS_SCHED=mmcss``，不指定 CPU placement；``auto`` 才嘗試 CPU Sets。
-  ``off`` 可關閉。不使用舊版 Pro Audio / HIGHEST / 強制 CCD affinity 策略。
-- 每秒 4 次 DXGI process-local VRAM budget 與 render lag 診斷。
-  NORMAL / ELEVATED / HIGH / CRITICAL 壓力狀態具有 EMA、hysteresis 與 recovery cooldown。
-- ``CORNOBS_GPU_ADAPTIVE=balanced`` 啟用主預覽 FPS cap（30 / 15 / 8）與高壓音量表約 15 Hz。
-  預設 ``off``，等待硬體驗收；串流 compositor、來源與音訊頻率維持原設定。
-- 新簡易設定檔預設可用的 NVENC / QSV / AMF H.264，最後回退 x264。
-- Release + LTO、隱藏音量表不 repaint、fork 自動更新停用。
+不降低 stream、recording、scene compositor、來源 tick、Game Capture、Spout2、audio、encoder submission 或 network output cadence。
+不預設 CPU Sets/P-core affinity；``auto`` 僅供實驗。不控制遊戲或 VTube Studio 程序。
+手動 Disable Preview 與最小化行為沿用 upstream。低頻畫面不能造成操作失去 responsiveness。
 
-建置與測試
+Upstream 與 CornOBS
+------------------
+
+官方原有 Preview disable/minimize、Process Priority、Audio MMCSS、硬體編碼、Game Capture、Stats 隱藏 timer、Dynamic Bitrate / TCP pacing / Network Optimizations，全部重用。
+CornOBS 新增持久化模式、非輸出 display cap / meter / thumbnail policy，以及排程與 telemetry 的保守整合。
+詳見 `Upstream feature audit <docs/UPSTREAM_FEATURE_AUDIT.md>`_。
+
+**GPU priority build 差異：** 官方 workflow 提供私有 ``GPU_PRIORITY_VAL``，CornOBS 專用 CI 沒有提供，clean build 會顯示 ``CornOBS GPU priority: unavailable``。
+Administrator 執行不能補回未編入的 path。沒有猜測官方值、反組譯或另外啟用 REALTIME boost；benchmark 必須揭露差異。
+
+Compatibility 仍有 fork branding、updater/OAuth 與既有 fresh Simple profile encoder defaults 差異，不等於官方 release binary。
+現有使用者 Profile 不因模式切換被改寫。
+
+Recommended VTuber Gaming Setup
+-------------------------------
+
+- 依 `四組硬體驗收矩陣 <docs/PERF_BASELINE.md>`_ 評估 Gaming Stream；預設 Balanced/mmcss。
+- 有 VTube Studio 時固定 **60 FPS + Spout2**；關閉不用的 NDI / Virtual Webcam，避免 VSync 跑到 144/240/unlimited。
+- NVIDIA 優先 NVENC；AMD 使用平台支援的硬體 encoder。Preview 可直接關閉。
+- Windows Game Mode、停用不需要的 Game DVR 背景錄影、合理 game FPS cap。Profile D 必測 240 FPS 遊戲 + 1080p60 stream。
+- 只在**新建** ``CornOBS Gaming Stream`` Profile 手動套建議 preset：1080p60、NVENC H.264、P5 起步、一般 High Quality、Lookahead off；不改既有 Profile，不自動切 x264。
+
+設定理由與官方參考連結見 `CORNOBS.md <docs/CORNOBS.md>`_。A/B 硬體無 VTube Studio，不需啟動它。
+RX 9070 XT 的 H.264/AV1、RTX 5070 Ti/3070/4060 Ti 的 NVENC，以及三種 CPU 拓樸都必須完成驗收。
+
+建置與驗收
 ----------
 
-一般使用請到 `正式 Release <https://github.com/corn323/obs-studio/releases/latest>`_
-下載。新版的視窗標題與版本應包含 ``CornOBS 32.2.2-corn3``。
-遇到 Windows 安全性提示，先看 `Windows 啟動與網路說明 <docs/WINDOWS_STARTUP.md>`_。
+Windows x64 CI 使用 Visual Studio 2026，先跑 scheduler / GPU policy tests，再 build/package。
+Release + LTO、既有 fork updater disable 沿用。原生 Twitch/YouTube OAuth 未附官方憑證，沿用串流金鑰與 custom browser docks。
+請用 portable mode 與複製設定測試；fork 共用原 OBS 設定目錄。
 
-Windows CI 使用 Visual Studio 2026，先跑 scheduler / GPU policy tests，再建置與封裝。
-到 `Actions <https://github.com/corn323/obs-studio/actions/workflows/cornobs.yaml>`_
-下載對應 commit 的 ``CornOBS-windows-x64-<hash>`` portable artifact。
-Windows x64 預設只建置 x64；需要 legacy 32-bit companion targets 時，另以
-``-DCORNOBS_BUILD_X86=ON`` 配置。
-
-- `功能、開關、風險與限制 <docs/CORNOBS.md>`_
-- `固定遊戲 + VTube Studio benchmark 流程 <docs/PERF_BASELINE.md>`_
+- `功能、設定、rollback 與限制 <docs/CORNOBS.md>`_
+- `四組硬體、每組四模式與至少三次測試 <docs/PERF_BASELINE.md>`_
 - `Windows scheduler <docs/WINDOWS_SCHEDULER.md>`_
-- `分支盤點、保留與整合紀錄 <docs/BRANCH_AUDIT.md>`_
+- `Windows 啟動說明 <docs/WINDOWS_STARTUP.md>`_
+- `GitHub Actions <https://github.com/corn323/obs-studio/actions/workflows/cornobs.yaml>`_
 
-請先以 portable mode 與複製的設定進行測試。此 fork 沿用原 OBS 設定目錄；
-原生 Twitch / YouTube OAuth integration 未附官方憑證，可使用串流金鑰與自訂 browser docks。
-Browser 視覺節流、其餘 UI shedding、VRAM cache 回收及 GPU priority boost 尚未實作。
-
-English
--------
-
-A personal OBS Studio fork for single-PC game streaming: protect game frametimes
-and real stream continuity before preview and UI smoothness. Based on OBS 32.2.2.
-Conservative MMCSS is the default; CPU placement and GPU adaptive shedding require
-explicit opt-in. Unit tests verify decisions, not performance gains. Hardware A/B
-acceptance is pending. See the linked documentation for limitations and rollback.
+若官方 OBS 正確設定後已滿足需求、CornOBS 無可重複且有意義的改善，該硬體結論必須寫：
+**「此目標硬體不需要 CornOBS，建議使用官方 OBS。」** 不為了保留 fork 繼續增加 optimizer。
 
 Credits and license
 -------------------
