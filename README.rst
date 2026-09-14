@@ -33,6 +33,8 @@ CornOBS 是 OBS Studio 的個人 fork，與 OBS Project 無隸屬關係。
 Windows CI 使用 Visual Studio 2026，先跑 scheduler / GPU policy tests，再建置與封裝。
 到 `Actions <https://github.com/corn323/obs-studio/actions/workflows/cornobs.yaml>`_
 下載對應 commit 的 ``CornOBS-windows-x64-<hash>`` portable artifact。
+Windows x64 預設只建置 x64；需要 legacy 32-bit companion targets 時，另以
+``-DCORNOBS_BUILD_X86=ON`` 配置。
 
 - `功能、開關、風險與限制 <docs/CORNOBS.md>`_
 - `固定遊戲 + VTube Studio benchmark 流程 <docs/PERF_BASELINE.md>`_

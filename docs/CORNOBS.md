@@ -15,6 +15,7 @@
 | Adaptive meter | 一般約 30 Hz，高壓約 15 Hz，隱藏時跳過 repaint | 顯示峰值反應變慢 | adaptive off 回復 30 Hz；音訊 mixing 不變 |
 | Hardware H.264 defaults | 新簡易設定檔依可用性選 NVENC/QSV/AMF，最後 x264 | 編碼畫質依硬體而異 | 設定內選 x264；既有使用者設定不變 |
 | Release/LTO | 使用最佳化 binary 做比較 | 完整編譯較久 | CI 可選 RelWithDebInfo 作診斷，不能混為效能基準 |
+| x64-only Windows build | 不下載已停止發布的 legacy x86 dependency slice | 需要 32-bit companion targets 的人必須明確開啟 | `-DCORNOBS_BUILD_X86=ON`；預設 OFF |
 
 優先只限制主視窗 preview 的整個 swapchain render/present。來源 tick、場景 compositor、Game Capture、VTube Studio capture、真正 stream/record output、audio 與 encoder 的節奏都沒有加入 adaptive 跳幀。Studio Mode 的 program display、projector 與 properties preview 不受第一版限制。
 

@@ -40,6 +40,7 @@ Local branches initially: cornobs and codex/windows-thread-scheduler matched ori
 - Replaced: old active HIGHEST/Pro Audio/CCD-affinity path with role scheduler. New default mmcss does not assign CPU Sets; explicit auto retains tested placement candidate.
 - Updated: CI uses windows-2025-vs2026; version fixed to 32.2.2 so archive tags cannot corrupt version detection.
 - Upstream already removed two gs_flush calls from render_video; retained upstream implementation. No speculative copy/pool rewrites.
+- 32.2.2's x64 configure attempted a legacy x86 dependency URL that returns HTTP 22; added `CORNOBS_BUILD_X86=OFF` default so the x64-only artifact does not require an unavailable 32-bit slice. Legacy companion targets remain opt-in.
 - Historical intermediate commits are preserved by safety tags; their obsolete behavior is intentionally not reintroduced.
 
 ## Completion gate
