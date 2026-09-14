@@ -30,6 +30,10 @@ CornOBS 是 OBS Studio 的個人 fork，與 OBS Project 無隸屬關係。
 建置與測試
 ----------
 
+一般使用請到 `正式 Release <https://github.com/corn323/obs-studio/releases/latest>`_
+下載。新版的視窗標題與版本應包含 ``CornOBS 32.2.2-corn3``。
+遇到 Windows 安全性提示，先看 `Windows 啟動與網路說明 <docs/WINDOWS_STARTUP.md>`_。
+
 Windows CI 使用 Visual Studio 2026，先跑 scheduler / GPU policy tests，再建置與封裝。
 到 `Actions <https://github.com/corn323/obs-studio/actions/workflows/cornobs.yaml>`_
 下載對應 commit 的 ``CornOBS-windows-x64-<hash>`` portable artifact。

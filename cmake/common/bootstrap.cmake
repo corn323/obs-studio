@@ -63,7 +63,7 @@ include(policies NO_POLICY_SCOPE)
 # Safety/archive tags are deliberately not version-shaped. Keep binaries on
 # the audited upstream base regardless of the nearest preservation tag.
 if(NOT DEFINED OBS_VERSION_OVERRIDE)
-  set(OBS_VERSION_OVERRIDE "32.2.2")
+  set(OBS_VERSION_OVERRIDE "32.2.2-corn3")
 endif()
 include(versionconfig)
 include(buildnumber)
