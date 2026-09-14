@@ -187,6 +187,13 @@ function(_target_install_obs target)
   set(multiValueArgs "")
   cmake_parse_arguments(PARSE_ARGV 0 _TIO "${options}" "${oneValueArgs}" "${multiValueArgs}")
 
+  # CornOBS x64 builds do not configure the legacy Win32 companion tree by
+  # default. Avoid generating post-build copy/install commands for files that
+  # cannot exist unless that tree is explicitly requested.
+  if(_TIO_x86 AND NOT CORNOBS_BUILD_X86)
+    return()
+  endif()
+
   if(_TIO_x86)
     get_target_property(target_type ${target} TYPE)
     if(target_type STREQUAL EXECUTABLE)
