@@ -1,3 +1,13 @@
+# Current branch policy and release
+
+The user authorized consolidation after the Gaming Stream implementation. `cornobs` is now the only branch on `corn323/obs-studio` and the GitHub default branch. It was fast-forwarded to the tested corn4 release source; no upstream history was rewritten. The previous 22 other origin branches were deleted only after checking their commits were contained in the new release history or had zero fork-only commits relative to the corresponding upstream branch. No open pull requests existed. Upstream's repository and historical tags/releases were not deleted.
+
+Release `32.2.2-corn4` targets `219a14421da9ab98a8dfb42d4fb4ad44857bccb9` and is published as GitHub Latest. [Windows CI 34941448647](https://github.com/corn323/obs-studio/actions/runs/34941448647) passed scheduler/GPU policy tests, full build, packaging and artifact upload. Subsequent documentation-only commits do not change the release binary.
+
+The clean development worktree now uses local `cornobs`. The original checkout's old scheduler branch and uncommitted benchmark document remain untouched to preserve the user's local work. They are not branches on GitHub.
+
+The following 2026-09-14 audit is historical; its old keep/delete recommendations have been superseded by the user's consolidation instruction.
+
 # CornOBS branch audit - 2026-09-14
 
 Fetched origin and upstream before evaluating every origin branch. GitHub default_branch was already cornobs. Latest stable release: OBS 32.2.2 (2026-08-14), ba2f32bdf791005443988a4955e963663e16b1ed.

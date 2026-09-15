@@ -1,3 +1,15 @@
+# Current release delivery
+
+[Latest Release: 32.2.2-corn4](https://github.com/corn323/obs-studio/releases/tag/32.2.2-corn4), source commit `219a14421da9ab98a8dfb42d4fb4ad44857bccb9`. The sole remote/default branch is `cornobs`; the earlier `cornobs-dev` delivery below is historical.
+
+CI run `34941448647` passed all tests, Windows x64 Release build and packaging. The downloaded ZIP passed CRC for all 2195 entries; `obs64.exe` and `obs.dll` are AMD64, the corn4 version string and scheduler startup API are present. GitHub's uploaded ZIP digest matches the local digest:
+
+`e3519fa9828434ca7c94a9bd6b8f061f79578114305038152e0dad278c31a818`
+
+Assets: `CornOBS-32.2.2-corn4-windows-x64.zip` and `.zip.sha256`. Build log confirms GPU priority unavailable. Release publication and default-branch consolidation were explicitly authorized by the user. GUI/game/stream and four-hardware acceptance remain for the user to test; Latest is not a performance acceptance claim.
+
+---
+
 # Gaming Stream implementation handoff
 
 Status: implementation pushed to `cornobs-dev`; Windows x64 CI build/package passed. **Hardware acceptance remains pending with the user.**
