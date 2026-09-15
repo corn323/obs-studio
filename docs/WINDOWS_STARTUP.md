@@ -4,7 +4,7 @@
 
 從 [CornOBS Release](https://github.com/corn323/obs-studio/releases/latest) 下載 Windows x64 ZIP，完整解壓後執行 `bin/64bit/obs64.exe`。不要直接在 ZIP 內執行。
 
-本版標題應包含 **CornOBS 32.2.2-corn3**。捷徑若仍顯示舊版，請檢查目標是否指向這次解壓的 `obs64.exe`。請保留官方 OBS 安裝；本 fork 沿用 OBS 設定目錄，測試時使用複製的設定與 portable mode。
+本版標題應包含 **CornOBS 32.2.2-corn4**。捷徑若仍顯示舊版，請檢查目標是否指向這次解壓的 `obs64.exe`。請保留官方 OBS 安裝；本 fork 沿用 OBS 設定目錄，測試時使用複製的設定與 portable mode。
 
 ## Smart App Control 阻止啟動
 

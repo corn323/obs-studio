@@ -3,7 +3,7 @@ CornOBS
 
 CornOBS 的目標是：**在單機遊戲直播中，優先保護遊戲 frametime 與真正直播輸出，允許 OBS 本地 Preview / Meter / UI visual refresh 降級。**
 
-基底為 OBS Studio **32.2.2**，與 OBS Project 無隸屬關係。正式分支 ``cornobs``，開發整合 ``cornobs-dev``。
+基底為 OBS Studio **32.2.2**，與 OBS Project 無隸屬關係。唯一維護與預設分支為 ``cornobs``。
 目前沒有四組目標硬體的 A/B 結果，不能宣稱效能提升或正式推薦 Gaming Stream。
 
 Gaming Stream Performance Mode

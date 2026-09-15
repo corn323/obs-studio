@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - cornobs
-      - cornobs-dev
     paths-ignore:
       - '**.md'
       - 'docs/**'

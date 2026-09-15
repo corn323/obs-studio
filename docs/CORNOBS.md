@@ -1,6 +1,6 @@
 # CornOBS Gaming Stream Performance Mode
 
-CornOBS 的目標是在單機遊戲直播中，優先保護遊戲 frametime 與真正直播輸出，允許 OBS 本地 Preview / Meter / UI visual refresh 降級。基底 OBS Studio **32.2.2**；開發修改放在 `cornobs-dev`。沒有硬體效能增益宣稱。
+CornOBS 的目標是在單機遊戲直播中，優先保護遊戲 frametime 與真正直播輸出，允許 OBS 本地 Preview / Meter / UI visual refresh 降級。基底 OBS Studio **32.2.2**；唯一維護與預設分支為 `cornobs`。沒有硬體效能增益宣稱。
 
 優先序：遊戲 frametime / 1% low → 真正 1080p60 stream → 音訊連續性 → encoder/network 連續性 → 操作 responsiveness → 本地 preview → meter/stats/thumbnail。降低 visual refresh 不能降低操作 responsiveness。
 
